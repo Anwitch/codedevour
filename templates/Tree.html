@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penampil & Extractor Proyek</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        .collapsible-header {
+            cursor: default;
+        }
+
+        .toggle-icon-container {
+            cursor: pointer;
+            padding-right: 8px;
+        }
+
+        .collapsible-content {
+            display: none;
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .folder-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .rotated {
+            transform: rotate(90deg);
+        }
+
+        .tab-button {
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-button.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+
+<body class="p-6">
+    <div class="container mx-auto bg-white p-8 rounded-xl shadow-lg flex flex-col space-y-8">
+        <div class="w-full flex items-center space-x-4">
+            <h1 class="text-xl font-bold text-gray-800">Path Project:</h1>
+            <input type="text" id="project-path-input" placeholder="Masukkan path folder di sini..."
+                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button id="set-path-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">
+                Set Path
+            </button>
+        </div>
+
+        <div class="flex space-x-8">
+            <div class="w-1/2">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">NamesExtractor</h1>
+                <p class="text-sm text-gray-600 mb-4">
+                    Pilih opsi di bawah untuk membuat daftar file dan folder di project Anda.
+                </p>
+                <div class="mb-4 space-y-2">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" id="include-files-checkbox" class="form-checkbox text-blue-500 rounded"
+                            checked>
+                        <span class="ml-2">Sertakan File</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" id="include-size-checkbox" class="form-checkbox text-blue-500 rounded">
+                        <span class="ml-2">Sertakan Ukuran</span>
+                    </label>
+                </div>
+                <button id="run-name-extractor-btn"
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">
+                    Jalankan NamesExtractor.py
+                </button>
+                <div id="file-tree" class="mt-4 space-y-2 h-96 overflow-y-auto border p-4 rounded-md bg-gray-50">
+                    <div class="text-center text-sm font-medium text-gray-500">
+                        Input path dan jalankan NamesExtractor.py untuk melihat struktur.
+                    </div>
+                </div>
+                <div id="status-message" class="mt-4 text-center text-sm font-medium text-gray-700"></div>
+            </div>
+
+            <div class="w-1/2">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">Pengelolaan File</h1>
+                <div class="flex border-b border-gray-300 mb-4">
+                    <button
+                        class="tab-button active py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
+                        data-tab="text-extractor-tab">TextExtractor</button>
+                    <button
+                        class="tab-button py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
+                        data-tab="exclude-me-tab">Exclude Me</button>
+                </div>
+
+                <div id="text-extractor-tab" class="tab-content">
+                    <p class="text-sm text-gray-600 mb-4">
+                        Klik tombol di bawah untuk menjalankan `TextEXtractor.py` dan melihat outputnya.
+                    </p>
+                    <button id="run-text-extractor-btn"
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                        Jalankan TextEXtractor.py
+                    </button>
+                    <div class="mt-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-2">Output:</h2>
+                        <pre id="output-display"
+                            class="bg-gray-100 p-4 rounded-md text-sm text-gray-700 whitespace-pre-wrap h-96 overflow-y-auto border border-gray-300">Tekan tombol untuk memulai...</pre>
+                    </div>
+                </div>
+
+                <div id="exclude-me-tab" class="tab-content hidden">
+                    <p class="text-sm text-gray-600 mb-4">
+                        Edit nama file atau folder yang ingin Anda kecualikan. Setiap nama harus berada di baris baru.
+                    </p>
+                    <textarea id="exclude-list-textarea"
+                        class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
+                    <button id="save-exclude-btn"
+                        class="w-full mt-4 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const projectPathInput = document.getElementById('project-path-input');
+            const setPathBtn = document.getElementById('set-path-btn');
+            const fileTreeElement = document.getElementById('file-tree');
+            const statusMessage = document.getElementById('status-message');
+            const runNameExtractorBtn = document.getElementById('run-name-extractor-btn');
+            const includeFilesCheckbox = document.getElementById('include-files-checkbox');
+            const includeSizeCheckbox = document.getElementById('include-size-checkbox');
+            const runTextExtractorBtn = document.getElementById('run-text-extractor-btn');
+            const outputDisplay = document.getElementById('output-display');
+            const excludeListTextarea = document.getElementById('exclude-list-textarea');
+            const saveExcludeBtn = document.getElementById('save-exclude-btn');
+
+            // Fungsi untuk membuat elemen HTML untuk file
+            const createFileElement = (name, size) => {
+                const element = document.createElement('div');
+                element.className = "flex items-center space-x-2 pl-4 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-md";
+                element.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>${name}</span>
+                <span class="ml-auto text-xs text-gray-500">${size}</span>
+            `;
+                return element;
+            };
+
+            // Fungsi untuk membuat elemen HTML untuk folder
+            const createFolderElement = (name, size) => {
+                const element = document.createElement('div');
+                element.className = "group";
+                element.innerHTML = `
+                    <div class="collapsible-header flex items-center space-x-2 py-2 px-3 hover:bg-gray-200 rounded-md transition-colors duration-200">
+                        <div class="toggle-icon-container">
+                            <svg class="folder-icon h-4 w-4 text-gray-500 group-hover:text-gray-700 transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-hover:text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v13.5z"></path></svg>
+                        <span class="text-sm font-medium text-gray-800">${name}</span>
+                        <span class="ml-auto text-xs text-gray-500">${size}</span>
+                    </div>
+                    <div class="collapsible-content pl-6 pt-1 space-y-1"></div>
+                `;
+                return element;
+            };
+
+            // Fungsi utama untuk memproses dan menampilkan data
+            const buildFileTree = (lines) => {
+                const tree = {};
+                const validLines = lines.filter(line => line.includes(';'));
+                if (validLines.length === 0) {
+                    fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item yang ditemukan.</div>`;
+                    return;
+                }
+
+                const firstLineParts = validLines[0].split(';');
+                const rootPath = firstLineParts[0].trim();
+
+                fileTreeElement.innerHTML = '';
+
+                validLines.forEach(line => {
+                    const lineParts = line.split(';');
+                    if (lineParts.length < 2) return;
+
+                    const fullPath = lineParts[0].trim();
+                    const itemType = lineParts[1].trim();
+                    const formattedSize = (lineParts.length > 3) ? lineParts[3].trim() : '';
+
+                    const relativePath = fullPath.substring(rootPath.length).replace(/\\/g, '/').replace(/^\//, '');
+                    if (!relativePath) return;
+
+                    const parts = relativePath.split('/');
+                    let currentLevel = tree;
+
+                    parts.forEach((part, index) => {
+                        if (!currentLevel[part]) {
+                            const isFile = (itemType === '[FILE]');
+                            currentLevel[part] = {
+                                isFile: isFile && index === parts.length - 1,
+                                children: {},
+                                size: formattedSize
+                            };
+                        }
+                        if (index < parts.length - 1) {
+                            currentLevel = currentLevel[part].children;
+                        }
+                    });
+                });
+
+                const renderTree = (node, parentElement) => {
+                    for (const key in node) {
+                        const item = node[key];
+                        // Tambahkan logika untuk menampilkan ukuran hanya jika opsi "Sertakan Ukuran" dicentang
+                        const sizeText = item.size || '';
+                        if (item.isFile) {
+                            const fileElement = createFileElement(key, sizeText);
+                            parentElement.appendChild(fileElement);
+                        } else {
+                            const folderElement = createFolderElement(key, sizeText);
+                            const contentElement = folderElement.querySelector('.collapsible-content');
+                            parentElement.appendChild(folderElement);
+                            renderTree(item.children, contentElement);
+                        }
+                    }
+                };
+                renderTree(tree, fileTreeElement);
+
+                document.querySelectorAll('.toggle-icon-container').forEach(iconContainer => {
+                    iconContainer.addEventListener('click', () => {
+                        const content = iconContainer.closest('.group').querySelector('.collapsible-content');
+                        const icon = iconContainer.querySelector('.folder-icon');
+                        if (content.style.display === "none" || content.style.display === "") {
+                            content.style.display = "block";
+                            icon.classList.add('rotated');
+                        } else {
+                            content.style.display = "none";
+                            icon.classList.remove('rotated');
+                        }
+                    });
+                });
+            };
+
+            // --- Bagian Penanganan Tombol ---
+            const handleButtonClick = async (endpoint, button, message, payload = {}) => {
+                outputDisplay.textContent = `${message}\n`;
+                button.disabled = true;
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        if (endpoint === '/run_nameextractor') {
+                            buildFileTree(data.output.split('\n').filter(line => line.trim() !== ''));
+                            statusMessage.textContent = `✅ Berhasil diperbarui.`;
+                            outputDisplay.textContent = `NamesExtractor.py berhasil dijalankan. Outputnya ada di file 'OutputAllNames.txt'.`;
+                        } else if (endpoint === '/run_textextractor') {
+                            outputDisplay.textContent = data.output;
+                        } else {
+                            outputDisplay.textContent = data.message;
+                        }
+                    } else {
+                        outputDisplay.textContent = `❌ Terjadi kesalahan: ${data.error}`;
+                    }
+                } catch (error) {
+                    outputDisplay.textContent = `❌ Terjadi kesalahan jaringan: ${error.message}`;
+                } finally {
+                    button.disabled = false;
+                }
+            };
+
+            // Event listener untuk tombol Set Path
+            setPathBtn.addEventListener('click', () => {
+                const path = projectPathInput.value;
+                if (path) {
+                    handleButtonClick('/set_path', setPathBtn, 'Mengatur path...', { path: path });
+                } else {
+                    outputDisplay.textContent = '❌ Masukkan path yang valid.';
+                }
+            });
+
+            // Event listener untuk tombol NamesExtractor
+            runNameExtractorBtn.addEventListener('click', () => {
+                const payload = {
+                    include_files: includeFilesCheckbox.checked,
+                    include_size: includeSizeCheckbox.checked
+                };
+                handleButtonClick('/run_nameextractor', runNameExtractorBtn, 'Menjalankan NamesExtractor.py... Mohon tunggu...', payload);
+            });
+
+            // Event listener untuk tombol TextExtractor
+            runTextExtractorBtn.addEventListener('click', () => {
+                handleButtonClick('/run_textextractor', runTextExtractorBtn, 'Menjalankan TextEXtractor.py... Mohon tunggu...');
+            });
+
+            // --- Bagian Tab dan Exclude Me ---
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.add('hidden'));
+
+                    button.classList.add('active');
+                    document.getElementById(button.dataset.tab).classList.remove('hidden');
+
+                    if (button.dataset.tab === 'exclude-me-tab') {
+                        // Muat konten file pengecualian
+                        fetch('/manage_exclude_file')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    excludeListTextarea.value = data.content;
+                                } else {
+                                    excludeListTextarea.value = `Gagal memuat file: ${data.error}`;
+                                }
+                            })
+                            .catch(error => {
+                                excludeListTextarea.value = `Gagal memuat: ${error.message}`;
+                            });
+                    }
+                });
+            });
+
+            // Event listener untuk tombol Save Exclude
+            saveExcludeBtn.addEventListener('click', () => {
+                const newContent = excludeListTextarea.value;
+                handleButtonClick('/manage_exclude_file', saveExcludeBtn, 'Menyimpan...', { content: newContent });
+            });
+        });
+    </script>
+</body>
+
+</html>

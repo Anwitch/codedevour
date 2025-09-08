@@ -1,0 +1,14 @@
+C:\Users\Andri\Project\VibeTeks; [FOLDER]; 290791625; 277.3 MB
+C:\Users\Andri\Project\VibeTeks\app.py; [FILE]; 4586; 4.5 KB
+C:\Users\Andri\Project\VibeTeks\config.py; [FILE]; 293; 293.0 B
+C:\Users\Andri\Project\VibeTeks\exclude_me.txt; [FILE]; 50; 50.0 B
+C:\Users\Andri\Project\VibeTeks\NamesExtractor.py; [FILE]; 5921; 5.8 KB
+C:\Users\Andri\Project\VibeTeks\OutputAllNames.txt; [FILE]; 962; 962.0 B
+C:\Users\Andri\Project\VibeTeks\TextEXtractor.py; [FILE]; 6233; 6.1 KB
+C:\Users\Andri\Project\VibeTeks\Input; [FOLDER]; 251; 251.0 B
+C:\Users\Andri\Project\VibeTeks\Input\No1.txt; [FILE]; 62; 62.0 B
+C:\Users\Andri\Project\VibeTeks\Input\No2.txt; [FILE]; 101; 101.0 B
+C:\Users\Andri\Project\VibeTeks\Input\Isi; [FOLDER]; 88; 88.0 B
+C:\Users\Andri\Project\VibeTeks\Input\Isi\No1.txt; [FILE]; 88; 88.0 B
+C:\Users\Andri\Project\VibeTeks\templates; [FOLDER]; 18024; 17.6 KB
+C:\Users\Andri\Project\VibeTeks\templates\Tree.html; [FILE]; 18024; 17.6 KB
