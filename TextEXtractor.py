@@ -27,7 +27,7 @@ def read_exclude_file(file_path):
     return excluded_items
 
 
-def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt', exclude_file=None, formatted_output=False):
+def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt', exclude_file=None, formatted_output=False):
     """
     Menggabungkan konten dari semua file di dalam sebuah folder dan subfoldernya
     ke dalam satu file teks baru, sambil mengabaikan file atau folder yang ditentukan
@@ -50,7 +50,8 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt'
         print(f"❌ Error: Folder '{folder_path}' tidak ditemukan atau bukan direktori.")
         return
     combined_content = ""
-    border_line = ""
+    batas = ""
+    bawah = ""
     excluded_found = []  # Daftar untuk menyimpan item yang dikecualikan
     included_found = []  # Daftar untuk menyimpan item yang berhasil digabungkan
     

@@ -11,7 +11,7 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEXT_EXTRACTOR_SCRIPT = os.path.join(PROJECT_DIR, 'TextEXtractor.py')
 LISTER_SCRIPT = os.path.join(PROJECT_DIR, 'NamesExtractor.py')
 NAME_OUTPUT_FILE = os.path.join(PROJECT_DIR, 'OutputAllNames.txt')
-OUTPUT_FILE = os.path.join(PROJECT_DIR, 'output.txt')
+OUTPUT_FILE = os.path.join(PROJECT_DIR, 'Output.txt')
 EXCLUDE_FILE_PATH = os.path.join(PROJECT_DIR, 'exclude_me.txt')
 CONFIG_FILE_PATH = os.path.join(PROJECT_DIR, 'config.py')
 
@@ -69,7 +69,7 @@ def run_nameextractor():
             check=True
         )
         
-        # Baca output.txt setelah skrip dijalankan
+        # Baca Output.txt setelah skrip dijalankan
         with open(NAME_OUTPUT_FILE, 'r', encoding='utf-8') as f:
             output_content = f.read()
 
@@ -95,7 +95,7 @@ def run_extractor():
             check=True
         )
         
-        # Baca output.txt setelah skrip dijalankan
+        # Baca Output.txt setelah skrip dijalankan
         with open(OUTPUT_FILE, 'r', encoding='utf-8') as f:
             output_content = f.read()
 

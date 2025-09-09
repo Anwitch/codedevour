@@ -1,4 +1,4 @@
 TARGET_FOLDER = ""
-COMBINER_OUTPUT_FILE_NAME = 'output.txt'
+COMBINER_OUTPUT_FILE_NAME = 'Output.txt'
 EXCLUDE_FILE_PATH = 'exclude_me.txt'
 LISTER_OUTPUT_FILE_NAME = 'OutputAllNames.txt'

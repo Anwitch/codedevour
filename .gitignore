@@ -1,2 +1,4 @@
 __pycache__/
 .venv/
+Output.txt
+OutputAllNames.txt
