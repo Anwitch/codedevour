@@ -1,5 +1,3 @@
-import os
-
 TARGET_FOLDER = ""
 COMBINER_OUTPUT_FILE_NAME = 'output.txt'
 EXCLUDE_FILE_PATH = 'exclude_me.txt'

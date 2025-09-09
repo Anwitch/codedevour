@@ -27,7 +27,7 @@ def read_exclude_file(file_path):
     return excluded_items
 
 
-def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt', exclude_file=None):
+def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt', exclude_file=None, formatted_output=False):
     """
     Menggabungkan konten dari semua file di dalam sebuah folder dan subfoldernya
     ke dalam satu file teks baru, sambil mengabaikan file atau folder yang ditentukan
@@ -49,8 +49,8 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt'
     if not os.path.isdir(folder_path):
         print(f"❌ Error: Folder '{folder_path}' tidak ditemukan atau bukan direktori.")
         return
-
-    combined_content = f"==================================================================================================== = adalah border untuk memisahkan file\n"
+    combined_content = ""
+    border_line = ""
     excluded_found = []  # Daftar untuk menyimpan item yang dikecualikan
     included_found = []  # Daftar untuk menyimpan item yang berhasil digabungkan
     
@@ -68,7 +68,10 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt'
         print("Tidak ada nama yang dikecualikan.")
         
     print("\n" + "="*50 + "\n")
-
+    if formatted_output:
+        combined_content = f"BA = adalah border atas dan WA adalah border bawah untuk memisahkan file\n"
+        batas = "BA\n"
+        bawah = "WA\n"
     for root, dirs, files in os.walk(folder_path):
         # Cek apakah direktori saat ini harus dikecualikan berdasarkan nama
         if os.path.basename(root) in exclude_names_set:
@@ -105,7 +108,7 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt'
                     content = f.read()
                     
                     # Tambahkan konten ke string gabungan dengan format yang diminta
-                    combined_content += f"====================================================================================================\n'{file_path}'\n\n{content}\n====================================================================================================\n\n"
+                    combined_content += f"{batas}'{file_path}'\n{content}\n{bawah}\n"
             except Exception as e:
                 # Tangani kesalahan saat membaca file
                 print(f"⚠️ Melewatkan file '{file_path}' karena kesalahan: {e}")
@@ -138,5 +141,6 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='output.txt'
 # Panggilan fungsi dengan semua parameter yang tersedia
 combine_files_in_folder_recursive(
     folder_path=config.TARGET_FOLDER,
-    exclude_file=config.EXCLUDE_FILE_PATH
+    exclude_file=config.EXCLUDE_FILE_PATH,
+    formatted_output=True
 )

@@ -13,6 +13,7 @@ LISTER_SCRIPT = os.path.join(PROJECT_DIR, 'NamesExtractor.py')
 NAME_OUTPUT_FILE = os.path.join(PROJECT_DIR, 'OutputAllNames.txt')
 OUTPUT_FILE = os.path.join(PROJECT_DIR, 'output.txt')
 EXCLUDE_FILE_PATH = os.path.join(PROJECT_DIR, 'exclude_me.txt')
+CONFIG_FILE_PATH = os.path.join(PROJECT_DIR, 'config.py')
 
 # Route utama untuk menampilkan halaman HTML
 @app.route('/')
@@ -24,9 +25,29 @@ def index():
 def set_project_path():
     data = request.json
     new_path = data.get('path')
+    print(f"Path yang diterima: '{new_path}'")
     if new_path and os.path.isdir(new_path):
-        config.TARGET_FOLDER = new_path
-        return jsonify({'success': True, 'message': f'Path berhasil diatur ke {new_path}'})
+        config.TARGET_FOLDER = os.path.join(PROJECT_DIR, 'config.py')
+        formatted_path = new_path.replace('/', '\\\\')
+        new_target_folder_line = f'TARGET_FOLDER = "{formatted_path}"'
+        try:
+            # Baca semua isi file config.py
+            with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            # Ganti baris yang berisi TARGET_FOLDER
+            with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+                for line in lines:
+                    if line.strip().startswith('TARGET_FOLDER'):
+                        f.write(new_target_folder_line + '\n')
+                    else:
+                        f.write(line)
+
+            # Setelah file diubah, perbarui nilai di memori
+            config.TARGET_FOLDER = new_path
+            return jsonify({'success': True, 'message': 'Path berhasil diatur dan disimpan ke config.py.'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Gagal menulis ke file konfigurasi: {str(e)}'}), 500
     return jsonify({'success': False, 'error': 'Path tidak valid atau tidak ditemukan.'}), 400
 
 # Route untuk menjalankan skrip NamesExtractor.py

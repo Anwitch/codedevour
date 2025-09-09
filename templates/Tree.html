@@ -284,9 +284,11 @@
 
             // Event listener untuk tombol Set Path
             setPathBtn.addEventListener('click', () => {
-                const path = projectPathInput.value;
-                if (path) {
-                    handleButtonClick('/set_path', setPathBtn, 'Mengatur path...', { path: path });
+                const pathInput = document.getElementById('project-path-input');
+                const pathValue = pathInput.value;
+                const normalizedPath = pathValue.replace(/\\/g, '/');
+                if (normalizedPath) {
+                    handleButtonClick('/set_path', setPathBtn, 'Mengatur path...', { path: normalizedPath });
                 } else {
                     outputDisplay.textContent = '❌ Masukkan path yang valid.';
                 }
