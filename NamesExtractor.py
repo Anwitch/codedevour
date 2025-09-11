@@ -1,7 +1,11 @@
 import os
 import sys
-import config
+import json
 import argparse
+
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
+with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+    config_data = json.load(f)
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -161,9 +165,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     list_all_names_to_file(
-        folder_path=config.TARGET_FOLDER,
-        output_file_name=config.LISTER_OUTPUT_FILE_NAME,
+        folder_path=config_data["TARGET_FOLDER"],
+        output_file_name=config_data["NAME_OUTPUT_FILE"],
         include_files=args.include_files,
         include_size=args.include_size,
-        exclude_file=config.EXCLUDE_FILE_PATH
+        exclude_file=config_data["EXCLUDE_FILE_PATH"]
     )

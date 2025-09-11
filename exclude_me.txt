@@ -5,3 +5,7 @@ node_modules
 .next
 .git
 .modified
+package-lock.json
+package.json
+README.md
+rub_app.bat

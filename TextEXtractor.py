@@ -1,7 +1,11 @@
 import os
-import config
+import json
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
+
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
+with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+    config_data = json.load(f)
 
 def read_exclude_file(file_path):
     """
@@ -141,7 +145,7 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
 
 # Panggilan fungsi dengan semua parameter yang tersedia
 combine_files_in_folder_recursive(
-    folder_path=config.TARGET_FOLDER,
-    exclude_file=config.EXCLUDE_FILE_PATH,
+    folder_path=config_data["TARGET_FOLDER"],
+    exclude_file=config_data["EXCLUDE_FILE_PATH"],
     formatted_output=True
 )
