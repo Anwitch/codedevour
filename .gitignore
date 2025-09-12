@@ -2,3 +2,4 @@ __pycache__/
 .venv/
 Output.txt
 OutputAllNames.txt
+config.json
