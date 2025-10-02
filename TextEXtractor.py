@@ -74,7 +74,7 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
         
     print("\n" + "="*50 + "\n")
     if formatted_output:
-        combined_content = f"BA denotes the top border, and WA denotes the bottom border used to separate files.\n"
+        combined_content = f"BA denotes the top border and WA denotes the bottom border used to separate files.\n"
         batas = "BA\n"
         bawah = "WA\n"
     for root, dirs, files in os.walk(folder_path):
