@@ -1,5 +1,5 @@
 @echo off
-cd /d C:\Users\Andri\Project\VibeTeks
+cd /d "%~dp0"
 call venv\Scripts\activate
 python app.py
 pause

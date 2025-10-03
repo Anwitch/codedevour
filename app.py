@@ -1,8 +1,10 @@
+# app.py (REPLACE WHOLE FILE)
 import os
+import sys
 import subprocess
 from threading import Timer
 import webbrowser
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import json
 
 app = Flask(__name__)
@@ -10,7 +12,6 @@ app = Flask(__name__)
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE_PATH = os.path.join(PROJECT_DIR, 'config.json')
 
-# Fungsi load & save config
 def load_config():
     with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -21,115 +22,291 @@ def save_config(data):
 
 config_data = load_config()
 
-# Tentukan path ke skrip
 TEXT_EXTRACTOR_SCRIPT = os.path.join(PROJECT_DIR, 'TextEXtractor.py')
 LISTER_SCRIPT = os.path.join(PROJECT_DIR, 'NamesExtractor.py')
 
-# Route utama
+# --- Helper: safe int/env
+def env_bool(name, default=False):
+    v = os.environ.get(name)
+    if v is None: return default
+    return v.strip().lower() in ("1","true","yes","y")
+
+# --- (Opsional) Restrict base path (isi ALLOWED_ROOTS kalau mau batasi)
+ALLOWED_ROOTS = []  # contoh: [os.path.expanduser("~"), "D:/Repos"]
+
+def is_allowed_path(p):
+    if not ALLOWED_ROOTS:
+        return True
+    p = os.path.abspath(p)
+    for root in ALLOWED_ROOTS:
+        root_abs = os.path.abspath(root)
+        if os.path.commonpath([p, root_abs]) == root_abs:
+            return True
+    return False
+
+def clean_path(p: str) -> str:
+    if not p:
+        return p
+    p = p.strip()
+
+    # Lepas kutip berlapis (termasuk smart quotes)
+    while (p.startswith('"') and p.endswith('"')) or (p.startswith("'") and p.endswith("'")):
+        p = p[1:-1].strip()
+    for ql, qr in [('“', '”'), ('‘', '’')]:
+        if p.startswith(ql) and p.endswith(qr):
+            p = p[1:-1].strip()
+
+    # Normalisasi slash -> forward slash
+    p = p.replace('\\', '/')
+
+    # Pertahankan UNC prefix //, rapikan duplikasi slash hanya di bagian setelahnya
+    if p.startswith('//'):
+        head, rest = '//', p[2:]
+        while '//' in rest:
+            rest = rest.replace('//', '/')
+        return head + rest
+
+    # Untuk path dengan drive (C:/...), rapikan duplikasi slash setelah drive
+    if len(p) >= 3 and p[1:3] == ':/':
+        drv, rest = p[:3], p[3:]
+        while '//' in rest:
+            rest = rest.replace('//', '/')
+        return drv + rest
+
+    # Selain itu, rapikan duplikasi slash biasa
+    while '//' in p:
+        p = p.replace('//', '/')
+    return p
+
+# --- Routes
+
 @app.route('/')
 def index():
     return render_template('Tree.html')
 
-# Route untuk set path baru
 @app.route('/set_path', methods=['POST'])
 def set_project_path():
-    data = request.json
-    new_path = data.get('path')
-    print(f"Path yang diterima: '{new_path}'")
-    if new_path and os.path.isdir(new_path):
-        try:
-            config_data["TARGET_FOLDER"] = new_path
-            save_config(config_data)
-            return jsonify({'success': True, 'message': 'Path berhasil diatur dan disimpan ke config.json.'})
-        except Exception as e:
-            return jsonify({'success': False, 'error': f'Gagal menulis ke config.json: {str(e)}'}), 500
-    return jsonify({'success': False, 'error': 'Path tidak valid atau tidak ditemukan.'}), 400
-
-# Jalankan NamesExtractor
-@app.route('/run_nameextractor', methods=['POST'])
-def run_nameextractor():
     try:
-        data = request.json
+        data = request.json or {}
+        new_path = clean_path(data.get('path', '')).strip()
+        if not new_path or not os.path.isdir(new_path):
+            return jsonify({'success': False, 'error': 'Path tidak valid atau tidak ditemukan.'}), 400
+        if not is_allowed_path(new_path):
+            return jsonify({'success': False, 'error': 'Path tersebut tidak diizinkan.'}), 403
+
+        config_data["TARGET_FOLDER"] = new_path
+        save_config(config_data)
+        return jsonify({'success': True, 'message': 'Path berhasil diatur dan disimpan ke config.json.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/pick_folder', methods=['GET'])
+def pick_folder():
+    try:
+        # Buka dialog folder di mesin lokal (server == komputer kamu)
+        import tkinter as tk
+        from tkinter import filedialog, TclError
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+
+        initial = config_data.get("TARGET_FOLDER") or os.path.expanduser("~")
+        chosen = filedialog.askdirectory(initialdir=initial, title="Pilih folder proyek")
+        chosen = clean_path(chosen)
+
+        root.destroy()
+
+        if not chosen:
+            return jsonify({'success': False, 'error': 'Pemilihan dibatalkan.'}), 400
+
+        if not is_allowed_path(chosen):
+            return jsonify({'success': False, 'error': 'Path tersebut tidak diizinkan.'}), 403
+
+        # Simpan ke config + balas ke UI
+        config_data["TARGET_FOLDER"] = clean_path(chosen)
+        save_config(config_data)
+        return jsonify({'success': True, 'path': config_data["TARGET_FOLDER"], 'message': 'Path diperbarui dari dialog.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    except TclError as e:
+        return jsonify({'success': False, 'error': f'Tidak bisa membuka dialog folder (no display?): {e}'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/manage_exclude_file', methods=['GET', 'POST'])
+def manage_exclude_file():
+    try:
+        exclude_path = config_data.get("EXCLUDE_FILE_PATH")
+        if not exclude_path:
+            return jsonify({'success': False, 'error': 'EXCLUDE_FILE_PATH tidak diset di config.json'}), 500
+
+        if request.method == 'GET':
+            # Muat isi file exclude
+            if not os.path.exists(exclude_path):
+                # Buat file kosong agar UI tetap bisa tampil
+                open(exclude_path, 'a', encoding='utf-8').close()
+            with open(exclude_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            return jsonify({'success': True, 'content': content})
+
+        # POST => simpan konten
+        data = request.get_json(silent=True) or {}
+        new_content = data.get('content', '')
+
+        # Guard ukuran biar ga kebablasan
+        if len(new_content) > 200_000:  # ~200 KB
+            return jsonify({'success': False, 'error': 'Konten terlalu besar.'}), 400
+
+        # Normalisasi newline dan hapus trailing spaces
+        norm = "\n".join(line.rstrip() for line in new_content.splitlines())
+        # Pastikan file di-create jika belum ada
+        os.makedirs(os.path.dirname(exclude_path), exist_ok=True) if os.path.dirname(exclude_path) else None
+        with open(exclude_path, 'w', encoding='utf-8') as f:
+            f.write(norm + ("\n" if not norm.endswith("\n") else ""))
+
+        return jsonify({'success': True, 'message': 'Daftar pengecualian berhasil disimpan.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# --- Legacy (tetap ada): jalankan NameExtractor yang menulis file teks
+@app.route('/run_nameextractor', methods=['POST'])
+def run_nameextractor_legacy():
+    try:
+        data = request.json or {}
         include_files = data.get('include_files', True)
         include_size = data.get('include_size', False)
 
         process = subprocess.run(
-            ['python', LISTER_SCRIPT,
+            [sys.executable, LISTER_SCRIPT,
              '--include-files', str(include_files),
-             '--include-size', str(include_size)],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            check=True
+             '--include-size', str(include_size),
+             '--format', 'text'],
+            capture_output=True, text=True, encoding='utf-8', check=True
         )
-
-        with open(os.path.join(PROJECT_DIR, config_data["NAME_OUTPUT_FILE"]), 'r', encoding='utf-8') as f:
+        out_path = os.path.join(PROJECT_DIR, config_data["NAME_OUTPUT_FILE"])
+        with open(out_path, 'r', encoding='utf-8') as f:
             output_content = f.read()
-
         return jsonify({'success': True, 'output': output_content})
-
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': e.stderr}), 500
-    except FileNotFoundError:
-        return jsonify({'success': False, 'error': f"Skrip '{LISTER_SCRIPT}' tidak ditemukan."}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Jalankan TextEXtractor
+# --- Baru: langsung JSON (tanpa file antar)
+@app.route('/run_nameextractor_json', methods=['POST'])
+def run_nameextractor_json():
+    try:
+        data = request.json or {}
+        include_files = data.get('include_files', True)
+        include_size = data.get('include_size', False)
+        override_path = data.get('path')
+
+        env = os.environ.copy()
+        if override_path:
+            env['VT_FOLDER'] = clean_path(override_path) 
+
+        process = subprocess.run(
+            [sys.executable, LISTER_SCRIPT,
+             '--include-files', str(include_files),
+             '--include-size', str(include_size),
+             '--format', 'json'],
+            capture_output=True, text=True, encoding='utf-8', check=True, timeout=600,
+            env=env
+        )
+        items = json.loads(process.stdout or "[]")
+        return jsonify({'success': True, 'items': items})
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Proses terlalu lama dan dihentikan.'}), 504
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': e.stderr}), 500
+    except json.JSONDecodeError:
+        return jsonify({'success': False, 'error': 'Output JSON tidak valid dari NamesExtractor.'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# --- Lazy size: hitung ukuran saat diminta
+def _human(n):
+    units = ["B","KB","MB","GB","TB"]
+    i=0
+    x=float(n)
+    while x>=1024 and i<len(units)-1:
+        x/=1024.0; i+=1
+    return f"{x:.1f} {units[i]}"
+
+def _compute_size(path):
+    if os.path.isfile(path):
+        try: s = os.path.getsize(path)
+        except: s = 0
+        return s
+    total = 0
+    for root, dirs, files in os.walk(path):
+        for fn in files:
+            fp = os.path.join(root, fn)
+            try:
+                if not os.path.islink(fp):
+                    total += os.path.getsize(fp)
+            except:
+                pass
+    return total
+
+@app.route('/size')
+def size_endpoint():
+    p = clean_path(request.args.get('path', ''))
+    if not p or not os.path.exists(p):
+        return jsonify({'success': False, 'error':'Path tidak ditemukan.'}), 400
+    if not is_allowed_path(p):
+        return jsonify({'success': False, 'error':'Path tidak diizinkan.'}), 403
+    bytes_ = _compute_size(p)
+    return jsonify({'success': True, 'size_bytes': bytes_, 'formatted_size': _human(bytes_)})
+
+# --- Text extractor (tetap kompatibel, plus opsi stream baca output)
 @app.route('/run_textextractor', methods=['POST'])
 def run_extractor():
     try:
+        data = request.get_json(silent=True) or {}
+        override_path = data.get('path')  # <-- opsional
+
+        env = os.environ.copy()
+        if override_path:
+            env['VT_FOLDER'] = clean_path(override_path)
+        # Jalankan extractor (dia yang tulis file)
         process = subprocess.run(
-            ['python', TEXT_EXTRACTOR_SCRIPT],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            check=True
+            [sys.executable, TEXT_EXTRACTOR_SCRIPT],
+            capture_output=True, text=True, encoding='utf-8', check=True, timeout=1800, env=env
         )
+        out_path = os.path.join(PROJECT_DIR, config_data["OUTPUT_FILE"])
 
-        with open(os.path.join(PROJECT_DIR, config_data["OUTPUT_FILE"]), 'r', encoding='utf-8') as f:
-            output_content = f.read()
+        def generate():
+            header = "\n".join(s for s in [process.stdout, process.stderr] if s).strip()
+            if header:
+                yield header + "\n\n"
+            with open(out_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for chunk in iter(lambda: f.read(8192), ''):
+                    yield chunk
 
-        return jsonify({'success': True, 'output': output_content})
 
+        return Response(generate(), mimetype='text/plain; charset=utf-8')
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'TextEXtractor berjalan terlalu lama.'}), 504
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': e.stderr}), 500
     except FileNotFoundError:
-        return jsonify({'success': False, 'error': f"Skrip '{TEXT_EXTRACTOR_SCRIPT}' tidak ditemukan."}), 500
+        return jsonify({'success': False, 'error': f"File output tidak ditemukan."}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# Kelola exclude_me.txt
-@app.route('/manage_exclude_file', methods=['GET', 'POST'])
-def manage_exclude_file():
-    exclude_path = os.path.join(PROJECT_DIR, config_data["EXCLUDE_FILE_PATH"])
-
-    if request.method == 'GET':
-        try:
-            with open(exclude_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            return jsonify({'success': True, 'content': content})
-        except FileNotFoundError:
-            return jsonify({'success': False, 'error': 'File exclude_me.txt tidak ditemukan.'}), 500
-
-    elif request.method == 'POST':
-        data = request.json
-        new_content = data.get('content')
-        if new_content is not None:
-            try:
-                with open(exclude_path, 'w', encoding='utf-8') as f:
-                    f.write(new_content)
-                return jsonify({'success': True, 'message': 'File pengecualian berhasil disimpan.'})
-            except Exception as e:
-                return jsonify({'success': False, 'error': str(e)}), 500
-        return jsonify({'success': False, 'error': 'Konten tidak valid'}), 400
 
 if __name__ == '__main__':
     def open_browser():
         webbrowser.open_new("http://127.0.0.1:5000")
 
+    # Auto-open sekali
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" and not getattr(app, "browser_opened", False):
         Timer(1, open_browser).start()
         app.browser_opened = True
 
-    app.run(debug=True)
+    # DEBUG via env (default False di production)
+    debug_mode = env_bool("FLASK_DEBUG", True)
+    app.run(debug=debug_mode)
