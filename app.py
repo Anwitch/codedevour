@@ -20,6 +20,89 @@ def save_config(data):
     with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4)
 
+# app.py
+
+# ... (setelah save_config) ...
+
+def get_config_value(key, default=None):
+    return config_data.get(key, default)
+
+def sync_gitignore_to_exclude(target_folder, exclude_file_path):
+    """Membaca .gitignore di TARGET_FOLDER dan menggabungkannya ke exclude_me.txt."""
+    gitignore_path = os.path.join(target_folder, '.gitignore')
+    
+    if not os.path.exists(gitignore_path):
+        return False # Tidak ada .gitignore
+        
+    try:
+        # 1. Baca pola dari .gitignore
+        with open(gitignore_path, 'r', encoding='utf-8', errors='ignore') as f:
+            gitignore_lines = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+
+        # 2. Baca pola dari exclude_me.txt yang sudah ada
+        existing_exclude_lines = []
+        if os.path.exists(exclude_file_path):
+            with open(exclude_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                existing_exclude_lines = [line.strip() for line in f if line.strip()]
+
+        # 3. Gabungkan dan hapus duplikat (menggunakan set)
+        combined_set = set(existing_exclude_lines)
+        
+        # Tambahkan pola dari .gitignore sebagai komentar di exclude_me.txt agar mudah dibedakan
+        # Kita tambahkan semua polanya langsung, tapi di .gitignore_lines kita tambahkan header/separator agar jelas
+        
+        # Pisahkan pola yang sudah ada di exclude_me.txt agar tidak terduplikasi
+        new_gitignore_patterns = [p for p in gitignore_lines if p not in combined_set]
+
+        if not new_gitignore_patterns:
+            return True # Tidak ada pola baru yang perlu digabungkan
+
+        # Tambahkan ke set untuk penyimpanan
+        for p in new_gitignore_patterns:
+            combined_set.add(p)
+
+        # 4. Simpan kembali ke exclude_file_path
+        # Format: Pola yang sudah ada + separator + Pola baru dari .gitignore
+        
+        header = "\n\n# === POLA DARI .gitignore ===\n# Pola di bawah ini otomatis disinkronkan saat Set Path.\n"
+        
+        # Baca konten exclude_me.txt yang lama (jika ada)
+        old_content = ""
+        if os.path.exists(exclude_file_path):
+             with open(exclude_file_path, 'r', encoding='utf-8') as f:
+                old_content = f.read().strip()
+                
+        # Pola yang baru ditambahkan
+        new_content = "\n".join(new_gitignore_patterns)
+
+        # Cek apakah bagian .gitignore sudah ada sebelumnya
+        if "# === POLA DARI .gitignore ===" in old_content:
+             # Jika sudah ada, cari dan timpa hanya bagian gitignore-nya (agar manual exclude tidak hilang)
+             import re
+             # Pola regex untuk mencari dan mengganti konten di antara dua separator
+             pattern = r'(# === POLA DARI \.gitignore ===[\s\S]*?)(?=\n\n|\Z)'
+             
+             # Coba cari dan ganti, jika tidak ketemu, append
+             if re.search(pattern, old_content):
+                final_content = re.sub(pattern, header + new_content, old_content).strip() + "\n"
+             else:
+                final_content = old_content + header + new_content + "\n"
+
+        else:
+             # Jika belum ada, langsung append di akhir
+             final_content = old_content + header + new_content + "\n"
+        
+        # Simpan final content
+        os.makedirs(os.path.dirname(exclude_file_path), exist_ok=True) if os.path.dirname(exclude_file_path) else None
+        with open(exclude_file_path, 'w', encoding='utf-8') as f:
+            f.write(final_content)
+
+        return True
+
+    except Exception as e:
+        print(f"Error saat sinkronisasi .gitignore: {e}", file=sys.stderr)
+        return False # Gagal sinkronisasi
+
 config_data = load_config()
 
 TEXT_EXTRACTOR_SCRIPT = os.path.join(PROJECT_DIR, 'TextEXtractor.py')
@@ -96,7 +179,13 @@ def set_project_path():
 
         config_data["TARGET_FOLDER"] = new_path
         save_config(config_data)
-        return jsonify({'success': True, 'message': 'Path berhasil diatur dan disimpan ke config.json.'})
+        exclude_path = config_data.get("EXCLUDE_FILE_PATH")
+        if sync_gitignore_to_exclude(new_path, exclude_path):
+             msg = 'Path berhasil diatur dan pola .gitignore digabungkan.'
+        else:
+             msg = 'Path berhasil diatur dan disimpan ke config.json.'
+        
+        return jsonify({'success': True, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -126,7 +215,13 @@ def pick_folder():
         # Simpan ke config + balas ke UI
         config_data["TARGET_FOLDER"] = clean_path(chosen)
         save_config(config_data)
-        return jsonify({'success': True, 'path': config_data["TARGET_FOLDER"], 'message': 'Path diperbarui dari dialog.'})
+        exclude_path = config_data.get("EXCLUDE_FILE_PATH")
+        if sync_gitignore_to_exclude(chosen, exclude_path):
+            msg = 'Path diperbarui dari dialog dan pola .gitignore digabungkan.'
+        else:
+            msg = 'Path diperbarui dari dialog.'
+            
+        return jsonify({'success': True, 'path': config_data["TARGET_FOLDER"], 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
     except TclError as e:
