@@ -17,6 +17,30 @@
             max-width: 1150px;
         }
 
+        .panel {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.35s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .collapsible-header {
             cursor: default;
         }
@@ -59,28 +83,27 @@
 
 <body class="p-6">
     <div class="container mx-auto bg-white p-8 rounded-xl shadow-lg flex flex-col space-y-8">
-        <div class="w-full flex items-center space-x-4">
+        <div class="flex items-center space-x-4 bg-white shadow-lg rounded-xl p-6 border border-gray-200">
             <h1 class="text-xl font-bold text-gray-800">Path Project:</h1>
             <input type="text" id="project-path-input" placeholder="Masukkan path folder di sini..."
                 class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
             <button id="pick-folder-btn"
-                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md">
-                Pilih Folder…
-            </button>
-            <button id="set-path-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">
-                Set Path
-            </button>
+                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md">Pilih
+                Folder…</button>
+            <button id="set-path-btn"
+                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Set Path</button>
         </div>
 
         <div class="flex space-x-8">
-            <div class="w-1/2">
-                <h1 class="text-2xl font-bold text-gray-800 mb-4">NamesExtractor</h1>
-                <p class="text-sm text-gray-600 mb-4">
-                    Pilih opsi di bawah untuk membuat daftar file dan folder di project Anda.
-                </p>
-                <p class="text-xs text-gray-500">
-                    Tips: tarik nama file/folder ke tab <strong>Exclude Me</strong> untuk menambah pengecualian.
-                </p>
+            <div class="panel">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">NamesExtractor</h2>
+                <p class="text-sm text-gray-600 mb-4">Pilih opsi di bawah untuk membuat daftar file dan folder di
+                    project
+                    Anda.</p>
+                <p class="text-xs text-gray-500 mb-3">Tips: tarik nama file/folder ke tab <strong>Exclude Me</strong>
+                    untuk
+                    menambah pengecualian.</p>
+
                 <div class="mb-4 space-y-2">
                     <label class="inline-flex items-center">
                         <input type="checkbox" id="include-files-checkbox" class="form-checkbox text-blue-500 rounded"
@@ -92,20 +115,23 @@
                         <span class="ml-2">Sertakan Ukuran</span>
                     </label>
                 </div>
+
                 <button id="run-name-extractor-btn"
-                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md focus:ring-2 focus:ring-green-400 transition-colors">
                     Jalankan NamesExtractor.py
                 </button>
-                <div id="file-tree" class="mt-4 space-y-2 h-96 overflow-y-auto border p-4 rounded-md bg-gray-50">
+
+                <div id="file-tree"
+                    class="mt-4 space-y-2 h-96 overflow-y-auto border border-gray-300 p-4 rounded-md bg-gray-50">
                     <div class="text-center text-sm font-medium text-gray-500">
                         Input path dan jalankan NamesExtractor.py untuk melihat struktur.
                     </div>
                 </div>
-                <div id="status-message" class="mt-4 text-center text-sm font-medium text-gray-700"></div>
             </div>
 
-            <div class="w-1/2">
-                <h1 class="text-2xl font-bold text-gray-800 mb-4">Pengelolaan File</h1>
+
+            <div class="panel">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Pengelolaan File</h2>
                 <div class="flex border-b border-gray-300 mb-4">
                     <button
                         class="tab-button active py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
@@ -120,11 +146,11 @@
                         Klik tombol di bawah untuk menjalankan `TextEXtractor.py` dan melihat outputnya.
                     </p>
                     <button id="run-text-extractor-btn"
-                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:ring-2 focus:ring-blue-400 transition-colors">
                         Jalankan TextEXtractor.py
                     </button>
                     <div class="mt-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-2">Output:</h2>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Output:</h3>
                         <pre id="output-display"
                             class="bg-gray-100 p-4 rounded-md text-sm text-gray-700 whitespace-pre-wrap h-96 overflow-y-auto border border-gray-300">Tekan tombol untuk memulai...</pre>
                     </div>
@@ -141,6 +167,16 @@
                 </div>
             </div>
         </div>
+        <section class="panel">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-800">Status & Penjelasan</h3>
+                <span id="statusMessage" class="text-sm text-gray-500"></span>
+            </div>
+            <hr class="my-3">
+            <ul id="activity-log"
+                class="text-sm text-gray-700 font-mono whitespace-pre-wrap space-y-1 max-h-56 overflow-y-auto flex flex-col-reverse">
+            </ul>
+        </section>
     </div>
 
     <script>
@@ -148,7 +184,6 @@
             const projectPathInput = document.getElementById('project-path-input');
             const setPathBtn = document.getElementById('set-path-btn');
             const fileTreeElement = document.getElementById('file-tree');
-            const statusMessage = document.getElementById('status-message');
             const runNameExtractorBtn = document.getElementById('run-name-extractor-btn');
             const includeFilesCheckbox = document.getElementById('include-files-checkbox');
             const includeSizeCheckbox = document.getElementById('include-size-checkbox');
@@ -157,6 +192,21 @@
             const excludeListTextarea = document.getElementById('exclude-list-textarea');
             const saveExcludeBtn = document.getElementById('save-exclude-btn');
             const pickFolderBtn = document.getElementById('pick-folder-btn');
+            const activityLog = document.getElementById('activity-log');
+            const statusMessage = document.getElementById('statusMessage');
+
+            function appendLog(text, type = 'info') {
+                const li = document.createElement('li');
+                li.classList.add('fade-in');
+                const time = new Date().toLocaleTimeString();
+                li.textContent = `[${time}] ${text}`;
+                li.className += (
+                    type === 'error' ? ' text-red-600' :
+                        type === 'success' ? ' text-green-700' : ' text-gray-700'
+                );
+                activityLog.insertBefore(li, activityLog.firstChild); // terbaru di atas
+            }
+
 
             // --- Drag & Drop ke Exclude Me ---
             const normalizeList = (text) => {
@@ -315,48 +365,65 @@
             };
 
             // --- Bagian Penanganan Tombol ---
+            // ===== REPLACE: handleButtonClick =====
             const handleButtonClick = async (endpoint, button, message, payload = {}) => {
-                outputDisplay.textContent = `${message}\n`;
+                statusMessage.textContent = message;   // ringkas di header
+                appendLog(message, 'info');            // detail ke panel bawah
                 button.disabled = true;
 
                 try {
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
-                            // hint untuk server: kita siap terima text untuk textextractor
                             'Content-Type': 'application/json',
                             'Accept': endpoint === '/run_textextractor' ? 'text/plain' : 'application/json'
                         },
                         body: JSON.stringify(payload)
                     });
 
-                    // --- bedakan cara baca response ---
                     const isTextExtractor = endpoint === '/run_textextractor';
                     const data = isTextExtractor ? await response.text() : await response.json();
 
-                    if (response.ok) {
-                        if (endpoint === '/run_nameextractor_json') {
-                            const items = data.items || [];
-                            buildFileTreeFromJson(items, includeSizeCheckbox.checked);
-                            statusMessage.textContent = `✅ Berhasil diperbarui. (${items.length} item)`;
-                            outputDisplay.textContent = `NamesExtractor JSON berhasil dijalankan.`;
-                        } else if (endpoint === '/run_nameextractor') {
-                            // legacy text output
-                            buildFileTree(data.output.split('\n').filter(line => line.trim() !== ''));
-                            statusMessage.textContent = `✅ Berhasil diperbarui.`;
-                            outputDisplay.textContent = `NamesExtractor.py berhasil dijalankan. Outputnya ada di file 'OutputAllNames.txt'.`;
-                        } else if (endpoint === '/run_textextractor') {
-                            // PLAIN TEXT (bukan JSON)
-                            outputDisplay.textContent = data;
-                        } else {
-                            outputDisplay.textContent = (data && data.message) ? data.message : 'Selesai.';
-                        }
-                    } else {
+                    if (!response.ok) {
                         const errMsg = isTextExtractor ? data : (data && data.error);
-                        outputDisplay.textContent = `❌ Terjadi kesalahan: ${errMsg || response.statusText}`;
+                        statusMessage.textContent = `❌ ${errMsg || response.statusText}`;
+                        appendLog(`Terjadi kesalahan: ${errMsg || response.statusText}`, 'error');
+                        return;
+                    }
+
+                    // ==== mapping sukses per-endpoint ====
+                    if (endpoint === '/run_nameextractor_json') {
+                        const items = data.items || [];
+                        buildFileTreeFromJson(items, includeSizeCheckbox.checked);
+                        statusMessage.textContent = `✅ Struktur diperbarui (${items.length} item).`;
+                        appendLog('NamesExtractor JSON berhasil dijalankan.', 'success');
+
+                    } else if (endpoint === '/run_nameextractor') {
+                        buildFileTree(data.output.split('\n').filter(line => line.trim() !== ''));
+                        statusMessage.textContent = '✅ Struktur diperbarui.';
+                        appendLog("NamesExtractor.py (legacy) berhasil dijalankan. Output ada di 'OutputAllNames.txt'.", 'success');
+
+                    } else if (endpoint === '/run_textextractor') {
+                        // Satu-satunya yang menulis ke panel Output
+                        outputDisplay.textContent = data;
+                        statusMessage.textContent = '✅ TextEXtractor selesai.';
+                        appendLog('TextEXtractor selesai. Output ditampilkan.', 'success');
+
+                    } else if (endpoint === '/set_path') {
+                        statusMessage.textContent = data.message || 'Path disimpan.';
+                        appendLog('Path berhasil diatur dan disimpan ke config.json.', 'success');
+
+                    } else if (endpoint === '/manage_exclude_file') {
+                        statusMessage.textContent = data.message || 'Daftar pengecualian disimpan.';
+                        appendLog('Daftar pengecualian berhasil disimpan.', 'success');
+
+                    } else {
+                        statusMessage.textContent = data.message || 'Selesai.';
+                        appendLog(data.message || 'Selesai.', 'success');
                     }
                 } catch (error) {
-                    outputDisplay.textContent = `❌ Terjadi kesalahan jaringan: ${error.message}`;
+                    statusMessage.textContent = `❌ ${error.message}`;
+                    appendLog(`Terjadi kesalahan jaringan: ${error.message}`, 'error');
                 } finally {
                     button.disabled = false;
                 }
@@ -532,6 +599,7 @@
             pickFolderBtn.addEventListener('click', async () => {
                 pickFolderBtn.disabled = true;
                 statusMessage.textContent = 'Membuka dialog folder...';
+                appendLog('Membuka dialog pemilihan folder...', 'info');
 
                 try {
                     const res = await fetch('/pick_folder'); // GET
@@ -541,19 +609,29 @@
                         const normalized = (data.path || '').replace(/\\/g, '/');
                         projectPathInput.value = normalized;
                         statusMessage.textContent = `✅ Path terpilih: ${normalized}`;
-                        // Opsional: langsung refresh tree
+                        appendLog(`Path diperbarui dari dialog: ${normalized}`, 'success');
+
                         const payload = {
                             include_files: includeFilesCheckbox.checked,
                             include_size: includeSizeCheckbox.checked,
                             path: normalized // kirim override langsung
                         };
                         // jalankan NamesExtractor JSON untuk path terpilih
-                        await handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Memuat struktur…', payload);
+                        appendLog('Menjalankan NamesExtractor JSON untuk path terpilih...', 'info');
+                        await handleButtonClick(
+                            '/run_nameextractor_json',
+                            runNameExtractorBtn,
+                            'Memuat struktur…',
+                            payload
+                        );
                     } else {
-                        statusMessage.textContent = `❌ ${data.error || 'Gagal memilih folder.'}`;
+                        const err = data.error || 'Gagal memilih folder.';
+                        statusMessage.textContent = `❌ ${err}`;
+                        appendLog(`Gagal memilih folder: ${err}`, 'error');
                     }
                 } catch (e) {
                     statusMessage.textContent = `❌ Gagal: ${e.message}`;
+                    appendLog(`Terjadi kesalahan jaringan: ${e.message}`, 'error');
                 } finally {
                     pickFolderBtn.disabled = false;
                 }

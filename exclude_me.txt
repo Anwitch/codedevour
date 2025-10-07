@@ -9,3 +9,4 @@ run_app.bat
 .env.example
 package-lock.json
 .idx
+docker-compose.yml
