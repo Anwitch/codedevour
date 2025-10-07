@@ -146,6 +146,22 @@
                     <p class="text-sm text-gray-600 mb-4">
                         Klik tombol di bawah untuk menjalankan `TextEXtractor.py` dan melihat outputnya.
                     </p>
+                    <div class="grid grid-cols-1 gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <label class="w-40 text-sm text-gray-700 font-medium">Folder Output</label>
+                            <input id="output-dir-input" type="text" placeholder="cth: C:/Users/Andri/Output"
+                                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
+                            <button id="pick-output-dir-btn"
+                                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded-md whitespace-nowrap">
+                                Pilih…
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="w-40 text-sm text-gray-700 font-medium">Nama File</label>
+                            <input id="output-name-input" type="text" placeholder="Output.txt"
+                                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
+                        </div>
+                    </div>
                     <button id="run-text-extractor-btn"
                         class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:ring-2 focus:ring-blue-400 transition-colors">
                         Jalankan TextEXtractor.py
@@ -195,6 +211,9 @@
             const pickFolderBtn = document.getElementById('pick-folder-btn');
             const activityLog = document.getElementById('activity-log');
             const statusMessage = document.getElementById('statusMessage');
+            const outputDirInput = document.getElementById('output-dir-input');
+            const outputNameInput = document.getElementById('output-name-input');
+            const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
 
             function appendLog(text, type = 'info') {
                 const li = document.createElement('li');
@@ -636,6 +655,45 @@
                 } finally {
                     pickFolderBtn.disabled = false;
                 }
+            });
+            // Pilih folder untuk OUTPUT TextExtractor
+            pickOutputDirBtn.addEventListener('click', async () => {
+                pickOutputDirBtn.disabled = true;
+                statusMessage.textContent = 'Membuka dialog folder output...';
+                appendLog('Membuka dialog pemilihan folder output...', 'info');
+
+                try {
+                    const res = await fetch('/pick_output_folder'); // GET
+                    const data = await res.json();
+
+                    if (res.ok && data.success) {
+                        const normalized = (data.path || '').replace(/\\/g, '/');
+                        outputDirInput.value = normalized;
+                        statusMessage.textContent = `✅ Output folder terpilih: ${normalized}`;
+                        appendLog(`Output folder diperbarui dari dialog: ${normalized}`, 'success');
+                    } else {
+                        const err = data.error || 'Gagal memilih folder output.';
+                        statusMessage.textContent = `❌ ${err}`;
+                        appendLog(`Gagal memilih folder output: ${err}`, 'error');
+                    }
+                } catch (e) {
+                    statusMessage.textContent = `❌ Gagal: ${e.message}`;
+                    appendLog(`Terjadi kesalahan jaringan: ${e.message}`, 'error');
+                } finally {
+                    pickOutputDirBtn.disabled = false;
+                }
+            });
+            
+            // Event listener untuk tombol TextExtractor
+            runTextExtractorBtn.addEventListener('click', () => {
+                const normalizedPath = cleanPath(projectPathInput.value);
+                const payload = {
+                    ...(normalizedPath ? { path: normalizedPath } : {}),
+                    ...(outputDirInput.value ? { output_dir: cleanPath(outputDirInput.value) } : {}),
+                    ...(outputNameInput.value ? { output_name: outputNameInput.value.trim() } : {}),
+                };
+                handleButtonClick('/run_textextractor', runTextExtractorBtn,
+                    'Menjalankan TextEXtractor.py... Mohon tunggu...', payload);
             });
 
         });

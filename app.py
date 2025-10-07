@@ -229,6 +229,32 @@ def pick_folder():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/pick_output_folder', methods=['GET'])
+def pick_output_folder():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog, TclError
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+
+        initial = os.path.dirname(config_data.get("OUTPUT_FILE") or "") or (config_data.get("TARGET_FOLDER") or os.path.expanduser("~"))
+        chosen = filedialog.askdirectory(initialdir=initial, title="Pilih folder output TextExtractor")
+        chosen = clean_path(chosen)
+        root.destroy()
+
+        if not chosen:
+            return jsonify({'success': False, 'error': 'Pemilihan dibatalkan.'}), 400
+        if not os.path.isdir(chosen):
+            return jsonify({'success': False, 'error': 'Folder tidak valid.'}), 400
+
+        return jsonify({'success': True, 'path': chosen})
+    except TclError as e:
+        return jsonify({'success': False, 'error': f'Tidak bisa membuka dialog folder (no display?): {e}'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/manage_exclude_file', methods=['GET', 'POST'])
 def manage_exclude_file():
@@ -358,21 +384,45 @@ def size_endpoint():
     return jsonify({'success': True, 'size_bytes': bytes_, 'formatted_size': _human(bytes_)})
 
 # --- Text extractor (tetap kompatibel, plus opsi stream baca output)
+
 @app.route('/run_textextractor', methods=['POST'])
 def run_extractor():
     try:
         data = request.get_json(silent=True) or {}
-        override_path = data.get('path')  # <-- opsional
+        override_path = data.get('path')              # VT_FOLDER (opsional)
+        output_dir = data.get('output_dir')           # opsional
+        output_name = (data.get('output_name') or '').strip()  # opsional
 
+        # Siapkan env VT_FOLDER jika user override path sumber
         env = os.environ.copy()
         if override_path:
             env['VT_FOLDER'] = clean_path(override_path)
+
+        # Jika user menentukan lokasi/nama output, kita set config OUTPUT_FILE
+        original_output_file = config_data.get("OUTPUT_FILE")
+        if output_dir or output_name:
+            # Tentukan nama file (default ke nama lama atau 'Output.txt')
+            base_name = output_name if output_name else (os.path.basename(original_output_file) if original_output_file else "Output.txt")
+            # Tentukan folder (default ke folder existing OUTPUT_FILE atau PROJECT_DIR)
+            base_dir = clean_path(output_dir) if output_dir else (
+                clean_path(os.path.dirname(original_output_file)) if original_output_file else PROJECT_DIR
+            )
+            # Gabungkan
+            new_output_full = clean_path(os.path.join(base_dir, base_name))
+            # Pastikan folder ada
+            os.makedirs(os.path.dirname(new_output_full), exist_ok=True)
+            # Simpan ke config.json sebelum run (agar dibaca TextEXtractor)
+            config_data["OUTPUT_FILE"] = new_output_full
+            save_config(config_data)
+
         # Jalankan extractor (dia yang tulis file)
         process = subprocess.run(
             [sys.executable, TEXT_EXTRACTOR_SCRIPT],
             capture_output=True, text=True, encoding='utf-8', check=True, timeout=1800, env=env
         )
-        out_path = os.path.join(PROJECT_DIR, config_data["OUTPUT_FILE"])
+
+        # Tentukan path output yang akan dibaca untuk streaming balik
+        out_path = config_data.get("OUTPUT_FILE") or os.path.join(PROJECT_DIR, "Output.txt")
 
         def generate():
             header = "\n".join(s for s in [process.stdout, process.stderr] if s).strip()
@@ -382,16 +432,17 @@ def run_extractor():
                 for chunk in iter(lambda: f.read(8192), ''):
                     yield chunk
 
-
         return Response(generate(), mimetype='text/plain; charset=utf-8')
+
     except subprocess.TimeoutExpired:
         return jsonify({'success': False, 'error': 'TextEXtractor berjalan terlalu lama.'}), 504
     except subprocess.CalledProcessError as e:
         return jsonify({'success': False, 'error': e.stderr}), 500
     except FileNotFoundError:
-        return jsonify({'success': False, 'error': f"File output tidak ditemukan."}), 500
+        return jsonify({'success': False, 'error': "File output tidak ditemukan."}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     def open_browser():
