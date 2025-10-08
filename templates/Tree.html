@@ -167,7 +167,10 @@
                         Jalankan TextEXtractor.py
                     </button>
                     <div class="mt-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Output:</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                            Output: <span id="output-metrics" class="text-sm text-gray-500">(—)</span>
+                        </h3>
+
                         <pre id="output-display"
                             class="bg-gray-100 p-4 rounded-md text-sm text-gray-700 whitespace-pre-wrap h-96 overflow-y-auto border border-gray-300">Tekan tombol untuk memulai...</pre>
                     </div>
@@ -214,6 +217,19 @@
             const outputDirInput = document.getElementById('output-dir-input');
             const outputNameInput = document.getElementById('output-name-input');
             const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
+
+            const metricsBadge = document.getElementById('output-metrics');
+
+            async function refreshOutputMetrics() {
+                try {
+                    const r = await fetch('/output_metrics');
+                    const j = await r.json();
+                    if (r.ok && j.success) {
+                        metricsBadge.textContent = j.exists ? `(${j.words} kata · ${j.tokens} token)` : '(0 kata · 0 token)';
+                    } else metricsBadge.textContent = '(—)';
+                } catch { metricsBadge.textContent = '(—)'; }
+            }
+
 
             function appendLog(text, type = 'info') {
                 const li = document.createElement('li');
@@ -405,6 +421,48 @@
                     const data = isTextExtractor ? await response.text() : await response.json();
 
                     if (!response.ok) {
+                        // coba baca JSON (TextExtractor kadang text/plain)
+                        const ct = response.headers.get('content-type') || '';
+                        let j = null;
+                        if (ct.includes('application/json')) {
+                            try { j = JSON.parse(isTextExtractor ? data : JSON.stringify(data)); } catch { }
+                        }
+
+                        // first-run: wajib pilih folder output
+                        if (j && j.need_output_path) {
+                            statusMessage.textContent = 'Memerlukan folder output. Membuka dialog...';
+                            appendLog(`Server meminta pemilihan folder output (${j.reason}).`, 'info');
+                            try {
+                                const resPick = await fetch('/pick_output_folder');
+                                const pick = await resPick.json();
+                                if (resPick.ok && pick.success) {
+                                    const normalized = (pick.path || '').replace(/\\/g, '/');
+                                    outputDirInput.value = normalized;
+                                    if (j.suggested_name && !outputNameInput.value.trim()) {
+                                        outputNameInput.value = j.suggested_name;
+                                    }
+                                    appendLog(`Output folder terpilih: ${normalized}`, 'success');
+                                    statusMessage.textContent = 'Folder output dipilih. Menjalankan ulang TextEXtractor...';
+                                    const rerunPayload = {
+                                        ...(payload.path ? { path: payload.path } : {}),
+                                        ...(outputDirInput.value ? { output_dir: outputDirInput.value } : {}),
+                                        ...(outputNameInput.value ? { output_name: outputNameInput.value.trim() } : {}),
+                                    };
+                                    await handleButtonClick('/run_textextractor', button, 'Menjalankan ulang TextEXtractor...', rerunPayload);
+                                    return;
+                                } else {
+                                    const err = pick.error || 'Gagal memilih folder output.';
+                                    statusMessage.textContent = `❌ ${err}`;
+                                    appendLog(`Gagal memilih folder output: ${err}`, 'error');
+                                    return;
+                                }
+                            } catch (e) {
+                                statusMessage.textContent = `❌ Gagal membuka dialog: ${e.message}`;
+                                appendLog(`Kesalahan saat membuka dialog output: ${e.message}`, 'error');
+                                return;
+                            }
+                        }
+
                         const errMsg = isTextExtractor ? data : (data && data.error);
                         statusMessage.textContent = `❌ ${errMsg || response.statusText}`;
                         appendLog(`Terjadi kesalahan: ${errMsg || response.statusText}`, 'error');
@@ -428,6 +486,7 @@
                         outputDisplay.textContent = data;
                         statusMessage.textContent = '✅ TextEXtractor selesai.';
                         appendLog('TextEXtractor selesai. Output ditampilkan.', 'success');
+                        refreshOutputMetrics();
 
                     } else if (endpoint === '/set_path') {
                         statusMessage.textContent = data.message || 'Path disimpan.';
@@ -683,7 +742,7 @@
                     pickOutputDirBtn.disabled = false;
                 }
             });
-            
+
             // Event listener untuk tombol TextExtractor
             runTextExtractorBtn.addEventListener('click', () => {
                 const normalizedPath = cleanPath(projectPathInput.value);
@@ -697,6 +756,7 @@
             });
 
         });
+        refreshOutputMetrics();
     </script>
 </body>
 

@@ -1,4 +1,3 @@
-# app.py (REPLACE WHOLE FILE)
 import os
 import sys
 import subprocess
@@ -13,12 +12,46 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE_PATH = os.path.join(PROJECT_DIR, 'config.json')
 
 def load_config():
+    # default aman untuk repo baru
+    default_cfg = {
+        "TARGET_FOLDER": "",
+        "NAME_OUTPUT_FILE": "OutputAllNames.txt",
+        "OUTPUT_FILE": "",                 # kosong = belum diset
+        "EXCLUDE_FILE_PATH": "exclude_me.txt"
+    }
+    if not os.path.exists(CONFIG_FILE_PATH):
+        with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(default_cfg, f, indent=4)
+        return default_cfg
     with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        cfg = json.load(f)
+    for k, v in default_cfg.items():
+        cfg.setdefault(k, v)
+    return cfg
+
 
 def save_config(data):
     with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4)
+
+def _needs_output_destination(cfg, override_dir=None, override_name=None):
+    """Return (needs_pick: bool, reason: str, suggested_name: str)."""
+    if override_dir or override_name:
+        return (False, "", "")
+    out_file = (cfg.get("OUTPUT_FILE") or "").strip()
+    if not out_file:
+        return (True, "OUTPUT_FILE kosong", "Output.txt")
+    out_dir = os.path.dirname(out_file) or PROJECT_DIR
+    if not os.path.isdir(out_dir):
+        return (True, f"Folder output belum ada: {out_dir}", os.path.basename(out_file) or "Output.txt")
+    try:
+        test_path = os.path.join(out_dir, ".cd_probe_write")
+        with open(test_path, "w", encoding="utf-8") as _f: _f.write("ok")
+        os.remove(test_path)
+    except Exception:
+        return (True, f"Folder output tidak dapat ditulis: {out_dir}", os.path.basename(out_file) or "Output.txt")
+    return (False, "", "")
+
 
 # app.py
 
@@ -393,6 +426,15 @@ def run_extractor():
         output_dir = data.get('output_dir')           # opsional
         output_name = (data.get('output_name') or '').strip()  # opsional
 
+        needs, reason, suggested = _needs_output_destination(config_data, output_dir, output_name)
+        if needs:
+            return jsonify({
+                'success': False,
+                'need_output_path': True,
+                'reason': reason,
+                'suggested_name': suggested
+            }), 428  # Precondition Required
+
         # Siapkan env VT_FOLDER jika user override path sumber
         env = os.environ.copy()
         if override_path:
@@ -440,6 +482,32 @@ def run_extractor():
         return jsonify({'success': False, 'error': e.stderr}), 500
     except FileNotFoundError:
         return jsonify({'success': False, 'error': "File output tidak ditemukan."}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/output_metrics', methods=['GET'])
+def output_metrics():
+    import re, math
+    try:
+        out_path = config_data.get("OUTPUT_FILE") or os.path.join(PROJECT_DIR, "Output.txt")
+        if not os.path.exists(out_path):
+            return jsonify({'success': True, 'exists': False, 'words': 0, 'tokens': 0, 'lines': 0, 'chars': 0, 'bytes': 0})
+        with open(out_path, 'r', encoding='utf-8', errors='ignore') as f:
+            text = f.read()
+        words = len(re.findall(r'\S+', text))
+        lines = text.count('\n') + (1 if text and text[-1] != '\n' else 0)
+        chars = len(text); bytes_len = len(text.encode('utf-8'))
+        try:
+            import tiktoken
+            try:
+                enc = tiktoken.encoding_for_model("gpt-4o-mini")
+            except Exception:
+                enc = tiktoken.get_encoding("cl100k_base")
+            tokens = len(enc.encode(text))
+        except Exception:
+            tokens = math.ceil(chars / 4)  # fallback kasar
+        return jsonify({'success': True, 'exists': True, 'words': words, 'tokens': tokens,
+                        'lines': lines, 'chars': chars, 'bytes': bytes_len})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
