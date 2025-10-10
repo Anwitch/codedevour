@@ -77,7 +77,6 @@ def read_exclude_file(file_path):
 def add_files_to_list(all_items, files, root, exclude_names_set, include_size):
     for filename in files:
         if filename in exclude_names_set:
-            log(f"⚠️ Melewatkan file '{filename}' karena ada di daftar pengecualian.")
             continue
         file_path = os.path.join(root, filename)
         if include_size:
@@ -103,19 +102,10 @@ def list_all_names(folder_path, include_files=True, include_size=False, exclude_
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
     exclude_names_set = set(exclude_names)
 
-    log("Daftar nama yang akan dikecualikan:")
-    if exclude_names_set:
-        for name in exclude_names_set:
-            log(f"- {name}")
-    else:
-        log("Tidak ada nama yang dikecualikan.")
-    log("\n" + "="*50 + "\n")
-
     log(f"✅ Memulai penelusuran dari direktori: {folder_path}")
 
     for root, dirs, files in os.walk(folder_path):
         if os.path.basename(root) in exclude_names_set:
-            log(f"⚠️ Melewatkan folder '{root}' dan isinya karena ada di daftar pengecualian.")
             del dirs[:]
             continue
 

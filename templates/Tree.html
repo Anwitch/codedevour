@@ -225,8 +225,42 @@
             const outputNameInput = document.getElementById('output-name-input');
             const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
             const removeBlankLinesCheckbox = document.getElementById('remove-blank-lines-checkbox');
-
             const metricsBadge = document.getElementById('output-metrics');
+
+            // ---- Prefill input dari config saat halaman load ----
+            (async function prefillFromConfig() {
+                try {
+                    const r = await fetch('/config_summary');
+                    const j = await r.json();
+                    if (!r.ok || !j.success) return;
+
+                    // Prefill Project Path bila ada
+                    if (j.target_folder) {
+                        projectPathInput.value = j.target_folder.replace(/\\/g, '/');
+                        appendLog(`Project path terdeteksi: ${projectPathInput.value}`, 'info');
+                    }
+
+                    // Prefill Output Dir + Nama File bila sudah diset sebelumnya
+                    if (j.output_dir) {
+                        outputDirInput.value = j.output_dir.replace(/\\/g, '/');
+                    }
+                    if (j.output_name) {
+                        outputNameInput.value = j.output_name;
+                    }
+
+                    // Tampilkan hint status agar user tahu kita pakai path lama
+                    if (j.output_file) {
+                        appendLog(`Output akan ditulis ke: ${j.output_file}`, 'success');
+                        statusMessage.textContent = `Output: ${j.output_file}`;
+                    }
+
+                    // Perbarui badge metrik bila file sudah ada
+                    await refreshOutputMetrics();
+                } catch (e) {
+                    // diam-diam saja; tidak kritikal
+                }
+            })();
+
 
             async function refreshOutputMetrics() {
                 try {

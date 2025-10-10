@@ -417,6 +417,21 @@ def _compute_size(path):
                 pass
     return total
 
+@app.route('/config_summary', methods=['GET'])
+def config_summary():
+    try:
+        out = (config_data.get("OUTPUT_FILE") or "").strip()
+        tgt = (config_data.get("TARGET_FOLDER") or "").strip()
+        return jsonify({
+            'success': True,
+            'target_folder': tgt,
+            'output_file': out,
+            'output_dir': os.path.dirname(out) if out else "",
+            'output_name': os.path.basename(out) if out else ""
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/size')
 def size_endpoint():
     p = clean_path(request.args.get('path', ''))

@@ -78,14 +78,6 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
     exclude_set = set(exclude_names)
 
-    log("Daftar nama yang akan dikecualikan:")
-    if exclude_set:
-        for name in sorted(exclude_set):
-            log(f"- {name}")
-    else:
-        log("Tidak ada nama yang dikecualikan.")
-    log("\n" + "="*50 + "\n")
-
     header_note = "BA denotes the top border and WA denotes the bottom border used to separate files.\n"
 
     with open(output_file_name, 'w', encoding='utf-8', errors='ignore') as out:
@@ -97,7 +89,6 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
             pruned_dirs = []
             for d in list(dirs):
                 if is_excluded(os.path.join(root, d), d, exclude_set):
-                    log(f"⚠️ Melewatkan folder '{os.path.join(root, d)}' (exclude).")
                     excluded_found.append(d)
                 else:
                     pruned_dirs.append(d)
@@ -105,7 +96,6 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
 
             for filename in files:
                 if is_excluded(root, filename, exclude_set):
-                    log(f"⚠️ Melewatkan file '{os.path.join(root, filename)}' (exclude).")
                     excluded_found.append(filename)
                     continue
 
@@ -120,18 +110,15 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
                 try:
                     size = os.path.getsize(fp)
                 except Exception as e:
-                    log(f"⚠️ Melewatkan '{fp}' (gagal getsize: {e})")
                     continue
 
                 if size > MAX_FILE_BYTES:
-                    log(f"⚠️ Melewatkan '{fp}' (> {MAX_FILE_BYTES} bytes)")
                     continue
 
                 try:
                     with open(fp, 'rb') as fb:
                         sample = fb.read(4096)
                         if looks_binary(sample):
-                            log(f"⚠️ Melewatkan '{fp}' (binary-like)")
                             continue
 
                     with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
@@ -153,17 +140,6 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
                     log(f"⚠️ Melewatkan file '{fp}' karena kesalahan: {e}")
 
     log(f"\n✅ Berhasil! Semua konten digabungkan ke '{output_file_name}'.")
-    if excluded_found:
-        log("\nBerikut adalah file/folder yang dikecualikan:")
-        for item in sorted(set(excluded_found)):
-            log(f"- {item}")
-
-    if included_found:
-        log("\nBerikut adalah file/folder yang digabungkan:")
-        for item in sorted(set(included_found)):
-            log(f"- {item}")
-    else:
-        log("Tidak ada file atau folder yang digabungkan.")
 
 folder = os.environ.get("VT_FOLDER") or config_data["TARGET_FOLDER"]
 # Panggilan fungsi dengan parameter dari config
