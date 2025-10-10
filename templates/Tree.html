@@ -149,7 +149,7 @@
                     <div class="grid grid-cols-1 gap-3 mb-4">
                         <div class="flex items-center gap-3">
                             <label class="w-40 text-sm text-gray-700 font-medium">Folder Output</label>
-                            <input id="output-dir-input" type="text" placeholder="cth: C:/Users/Andri/Output"
+                            <input id="output-dir-input" type="text" placeholder="cth: C:/Users/Name/Output"
                                 class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
                             <button id="pick-output-dir-btn"
                                 class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded-md whitespace-nowrap">
@@ -161,6 +161,13 @@
                             <input id="output-name-input" type="text" placeholder="Output.txt"
                                 class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
                         </div>
+                    </div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <input id="remove-blank-lines-checkbox" type="checkbox"
+                            class="form-checkbox text-blue-500 rounded">
+                        <label for="remove-blank-lines-checkbox" class="text-sm text-gray-700 font-medium">
+                            Hapus baris kosong dari Output
+                        </label>
                     </div>
                     <button id="run-text-extractor-btn"
                         class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:ring-2 focus:ring-blue-400 transition-colors">
@@ -217,6 +224,7 @@
             const outputDirInput = document.getElementById('output-dir-input');
             const outputNameInput = document.getElementById('output-name-input');
             const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
+            const removeBlankLinesCheckbox = document.getElementById('remove-blank-lines-checkbox');
 
             const metricsBadge = document.getElementById('output-metrics');
 
@@ -287,10 +295,14 @@
                 const element = document.createElement('div');
                 element.className = "flex items-center space-x-2 pl-4 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-md";
                 element.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <span>${name}</span>
-                <span class="ml-auto text-xs text-gray-500">${size}</span>
-            `;
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>
+    <span>${name}</span>
+    <span class="ml-auto text-xs text-gray-500">${size}</span>
+    `;
                 makeDraggable(element, name);
                 return element;
             };
@@ -300,16 +312,24 @@
                 const element = document.createElement('div');
                 element.className = "group";
                 element.innerHTML = `
-                    <div class="collapsible-header flex items-center space-x-2 py-2 px-3 hover:bg-gray-200 rounded-md transition-colors duration-200">
-                        <div class="toggle-icon-container">
-                            <svg class="folder-icon h-4 w-4 text-gray-500 group-hover:text-gray-700 transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-hover:text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v13.5z"></path></svg>
-                        <span class="text-sm font-medium text-gray-800">${name}</span>
-                        <span class="ml-auto text-xs text-gray-500">${size}</span>
-                    </div>
-                    <div class="collapsible-content pl-6 pt-1 space-y-1"></div>
-                `;
+    <div
+        class="collapsible-header flex items-center space-x-2 py-2 px-3 hover:bg-gray-200 rounded-md transition-colors duration-200">
+        <div class="toggle-icon-container">
+            <svg class="folder-icon h-4 w-4 text-gray-500 group-hover:text-gray-700 transform" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-hover:text-gray-700"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v13.5z"></path>
+        </svg>
+        <span class="text-sm font-medium text-gray-800">${name}</span>
+        <span class="ml-auto text-xs text-gray-500">${size}</span>
+    </div>
+    <div class="collapsible-content pl-6 pt-1 space-y-1"></div>
+    `;
                 const header = element.querySelector('.collapsible-header');
                 makeDraggable(header, name);
                 return element;
@@ -329,7 +349,8 @@
                 const tree = {};
                 const validLines = lines.filter(line => line.includes(';'));
                 if (validLines.length === 0) {
-                    fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item yang ditemukan.</div>`;
+                    fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item yang
+        ditemukan.</div>`;
                     return;
                 }
 
@@ -340,11 +361,8 @@
 
                 validLines.forEach(line => {
                     const lineParts = line.split(';');
-                    if (lineParts.length < 2) return;
-
-                    const fullPath = lineParts[0].trim();
-                    const itemType = lineParts[1].trim();
-                    const formattedSize = (lineParts.length > 3) ? lineParts[3].trim() : '';
+                    if (lineParts.length < 2) return; const fullPath = lineParts[0].trim(); const itemType = lineParts[1].trim(); const
+                        formattedSize = (lineParts.length > 3) ? lineParts[3].trim() : '';
 
                     const relativePath = fullPath.substring(rootPath.length).replace(/\\/g, '/').replace(/^\//, '');
                     if (!relativePath) return;
@@ -361,13 +379,10 @@
                                 size: formattedSize
                             };
                         }
-                        if (index < parts.length - 1) {
-                            currentLevel = currentLevel[part].children;
-                        }
+                        if (index < parts.length - 1) { currentLevel = currentLevel[part].children; }
                     });
-                });
-
-                const renderTree = (node, parentElement) => {
+                }); const renderTree = (node,
+                    parentElement) => {
                     for (const key in node) {
                         const item = node[key];
                         // Tambahkan logika untuk menampilkan ukuran hanya jika opsi "Sertakan Ukuran" dicentang
@@ -403,8 +418,8 @@
             // --- Bagian Penanganan Tombol ---
             // ===== REPLACE: handleButtonClick =====
             const handleButtonClick = async (endpoint, button, message, payload = {}) => {
-                statusMessage.textContent = message;   // ringkas di header
-                appendLog(message, 'info');            // detail ke panel bawah
+                statusMessage.textContent = message; // ringkas di header
+                appendLog(message, 'info'); // detail ke panel bawah
                 button.disabled = true;
 
                 try {
@@ -538,18 +553,17 @@
             const buildFileTreeFromJson = (items, includeSize) => {
                 // Cari root terpendek sebagai prefix
                 if (!items.length) {
-                    fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item ditemukan.</div>`;
+                    fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item
+                ditemukan.</div>`;
                     return;
                 }
                 // root = common prefix path
                 const paths = items.map(it => it.path.replace(/\\/g, '/'));
                 let root = paths[0];
                 for (const p of paths.slice(1)) {
-                    let i = 0; while (i < root.length && i < p.length && root[i] === p[i]) i++;
-                    root = root.slice(0, root.slice(0, i).lastIndexOf('/') + 1);
-                }
-                const tree = {};
-                const nodeMap = {}; // map fullpath -> node
+                    let i = 0; while (i < root.length && i < p.length && root[i] === p[i]) i++; root = root.slice(0, root.slice(0,
+                        i).lastIndexOf('/') + 1);
+                } const tree = {}; const nodeMap = {}; // map fullpath -> node
 
                 const attach = (fullPath, type, sizeText) => {
                     const rel = fullPath.replace(/\\/g, '/').replace(root, '').replace(/^\/+/, '');
@@ -558,20 +572,16 @@
                     let current = tree;
                     let curPath = root.endsWith('/') ? root.slice(0, -1) : root;
                     for (let i = 0; i < parts.length; i++) {
-                        const part = parts[i];
-                        curPath = curPath + '/' + part;
+                        const part = parts[i]; curPath = curPath + '/' + part;
                         current[part] = current[part] || { isFile: false, children: {}, name: part, path: curPath, size: "" };
                         if (i === parts.length - 1) {
-                            if (type === 'FILE') current[part].isFile = true;
-                            if (sizeText) current[part].size = sizeText;
-                            nodeMap[curPath] = current[part];
+                            if (type === 'FILE') current[part].isFile = true; if (sizeText)
+                                current[part].size = sizeText; nodeMap[curPath] = current[part];
                         } else {
                             current = current[part].children;
                         }
                     }
-                };
-
-                items.forEach(it => {
+                }; items.forEach(it => {
                     attach(it.path, it.type, it.formatted_size || '');
                 });
 
@@ -750,6 +760,7 @@
                     ...(normalizedPath ? { path: normalizedPath } : {}),
                     ...(outputDirInput.value ? { output_dir: cleanPath(outputDirInput.value) } : {}),
                     ...(outputNameInput.value ? { output_name: outputNameInput.value.trim() } : {}),
+                    remove_blank_lines: !!removeBlankLinesCheckbox?.checked
                 };
                 handleButtonClick('/run_textextractor', runTextExtractorBtn,
                     'Menjalankan TextEXtractor.py... Mohon tunggu...', payload);

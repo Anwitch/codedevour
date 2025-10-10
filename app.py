@@ -52,7 +52,18 @@ def _needs_output_destination(cfg, override_dir=None, override_name=None):
         return (True, f"Folder output tidak dapat ditulis: {out_dir}", os.path.basename(out_file) or "Output.txt")
     return (False, "", "")
 
-
+def _remove_blank_lines_inplace(file_path: str):
+    """Hapus baris kosong/whitespace-only dari file, in-place."""
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+        # buang baris yang kosong (setelah strip)
+        cleaned = [ln for ln in lines if ln.strip()]
+        with open(file_path, 'w', encoding='utf-8', errors='ignore') as f:
+            f.writelines(cleaned)
+        return True, len(lines) - len(cleaned)
+    except Exception as e:
+        return False, str(e)
 # app.py
 
 # ... (setelah save_config) ...
@@ -419,12 +430,15 @@ def size_endpoint():
 # --- Text extractor (tetap kompatibel, plus opsi stream baca output)
 
 @app.route('/run_textextractor', methods=['POST'])
+# (di route /run_textextractor, ambil flag dari body)
+@app.route('/run_textextractor', methods=['POST'])
 def run_extractor():
     try:
         data = request.get_json(silent=True) or {}
-        override_path = data.get('path')              # VT_FOLDER (opsional)
-        output_dir = data.get('output_dir')           # opsional
-        output_name = (data.get('output_name') or '').strip()  # opsional
+        override_path = data.get('path')
+        output_dir = data.get('output_dir')
+        output_name = (data.get('output_name') or '').strip()
+        remove_blank = bool(data.get('remove_blank_lines'))  # <-- NEW
 
         needs, reason, suggested = _needs_output_destination(config_data, output_dir, output_name)
         if needs:
@@ -433,43 +447,44 @@ def run_extractor():
                 'need_output_path': True,
                 'reason': reason,
                 'suggested_name': suggested
-            }), 428  # Precondition Required
+            }), 428
 
-        # Siapkan env VT_FOLDER jika user override path sumber
         env = os.environ.copy()
         if override_path:
             env['VT_FOLDER'] = clean_path(override_path)
 
-        # Jika user menentukan lokasi/nama output, kita set config OUTPUT_FILE
         original_output_file = config_data.get("OUTPUT_FILE")
         if output_dir or output_name:
-            # Tentukan nama file (default ke nama lama atau 'Output.txt')
             base_name = output_name if output_name else (os.path.basename(original_output_file) if original_output_file else "Output.txt")
-            # Tentukan folder (default ke folder existing OUTPUT_FILE atau PROJECT_DIR)
             base_dir = clean_path(output_dir) if output_dir else (
                 clean_path(os.path.dirname(original_output_file)) if original_output_file else PROJECT_DIR
             )
-            # Gabungkan
             new_output_full = clean_path(os.path.join(base_dir, base_name))
-            # Pastikan folder ada
             os.makedirs(os.path.dirname(new_output_full), exist_ok=True)
-            # Simpan ke config.json sebelum run (agar dibaca TextEXtractor)
             config_data["OUTPUT_FILE"] = new_output_full
             save_config(config_data)
 
-        # Jalankan extractor (dia yang tulis file)
         process = subprocess.run(
             [sys.executable, TEXT_EXTRACTOR_SCRIPT],
             capture_output=True, text=True, encoding='utf-8', check=True, timeout=1800, env=env
         )
 
-        # Tentukan path output yang akan dibaca untuk streaming balik
         out_path = config_data.get("OUTPUT_FILE") or os.path.join(PROJECT_DIR, "Output.txt")
+
+        # === NEW: bersihkan baris kosong jika diminta ===
+        header_notes = []
+        if remove_blank:
+            ok, info = _remove_blank_lines_inplace(out_path)
+            if ok:
+                removed = info  # jumlah baris yang dihapus
+                header_notes.append(f"🧹 Blank-line cleaner: {removed} baris kosong dihapus.")
+            else:
+                header_notes.append(f"⚠️ Blank-line cleaner gagal: {info}")
 
         def generate():
             header = "\n".join(s for s in [process.stdout, process.stderr] if s).strip()
-            if header:
-                yield header + "\n\n"
+            if header or header_notes:
+                yield (header + ("\n" if header else "") + "\n".join(header_notes)).strip() + "\n\n"
             with open(out_path, 'r', encoding='utf-8', errors='ignore') as f:
                 for chunk in iter(lambda: f.read(8192), ''):
                     yield chunk
