@@ -99,9 +99,6 @@ venv\Scripts\activate
 
 # install deps
 pip install -r requirements.txt
-
-# (optional) for accurate token counts
-pip install tiktoken
 ```
 
 ### 3) Run
