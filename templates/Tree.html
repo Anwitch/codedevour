@@ -170,8 +170,10 @@
       <!-- Panel Kiri -->
       <div id="names-panel" class="panel flex-1 basis-1/2 min-w-0">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">NamesExtractor</h2>
-        <p class="text-sm text-gray-600 mb-4">Pilih opsi di bawah untuk membuat daftar file dan folder di project Anda.</p>
-        <p class="text-xs text-gray-500 mb-3">Tips: tarik nama file/folder ke tab <strong>Exclude Me</strong> untuk menambah pengecualian.</p>
+        <p class="text-sm text-gray-600 mb-4">Pilih opsi di bawah untuk membuat daftar file dan folder di project Anda.
+        </p>
+        <p class="text-xs text-gray-500 mb-3">Tips: tarik nama file/folder ke tab <strong>Exclude Me</strong> untuk
+          menambah pengecualian.</p>
 
         <div class="mb-4 space-y-2">
           <label class="inline-flex items-center">
@@ -184,11 +186,13 @@
           </label>
         </div>
 
-        <button id="run-name-extractor-btn" class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
+        <button id="run-name-extractor-btn"
+          class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
           Jalankan NamesExtractor.py
         </button>
 
-        <div id="file-tree" class="mt-4 space-y-2 h-96 overflow-y-auto border border-gray-300 p-4 rounded-md bg-gray-50">
+        <div id="file-tree"
+          class="mt-4 space-y-2 h-96 overflow-y-auto border border-gray-300 p-4 rounded-md bg-gray-50">
           <div class="text-center text-sm font-medium text-gray-500">
             Input path dan jalankan NamesExtractor.py untuk melihat struktur.
           </div>
@@ -199,7 +203,8 @@
       <div class="panel flex-1 basis-1/2 min-w-0">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Pengelolaan File</h2>
         <div class="flex border-b border-gray-300 mb-4">
-          <button class="tab-button active py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
+          <button
+            class="tab-button active py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
             data-tab="text-extractor-tab">TextExtractor</button>
           <button class="tab-button py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
             data-tab="exclude-me-tab">Exclude Me</button>
@@ -230,7 +235,25 @@
               Hapus baris kosong dari Output
             </label>
           </div>
-          <button id="run-text-extractor-btn" class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <label class="w-40 text-sm text-gray-700 font-medium">Model Target</label>
+              <input id="model-target-input" type="text" placeholder="gpt-4o-mini"
+                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="w-40 text-sm text-gray-700 font-medium">Max Tokens/Chunk</label>
+              <input id="max-tokens-chunk-input" type="number" placeholder="16000"
+                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
+            </div>
+          </div>
+
+          <button id="run-digest-btn"
+            class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
+            Buat AI Digest (ZIP)
+          </button>
+          <button id="run-text-extractor-btn"
+            class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
             Jalankan TextEXtractor.py
           </button>
           <div class="mt-6">
@@ -249,7 +272,8 @@
           </p>
           <textarea id="exclude-list-textarea"
             class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
-          <button id="save-exclude-btn" class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Simpan</button>
+          <button id="save-exclude-btn"
+            class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Simpan</button>
         </div>
       </div>
     </div>
@@ -261,7 +285,9 @@
         <span id="statusMessage" class="text-sm text-gray-500"></span>
       </div>
       <hr class="my-3">
-      <ul id="activity-log" class="text-sm text-gray-700 font-mono whitespace-pre-wrap space-y-1 max-h-56 overflow-y-auto flex flex-col-reverse"></ul>
+      <ul id="activity-log"
+        class="text-sm text-gray-700 font-mono whitespace-pre-wrap space-y-1 max-h-56 overflow-y-auto flex flex-col-reverse">
+      </ul>
     </section>
   </div>
 
@@ -285,6 +311,56 @@
       const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
       const removeBlankLinesCheckbox = document.getElementById('remove-blank-lines-checkbox');
       const metricsBadge = document.getElementById('output-metrics');
+      const runDigestBtn = document.getElementById('run-digest-btn');
+      const modelTargetInput = document.getElementById('model-target-input');
+      const maxTokensChunkInput = document.getElementById('max-tokens-chunk-input');
+
+      runDigestBtn?.addEventListener('click', async () => {
+        statusMessage.textContent = 'Membuat AI Digest Pack (ZIP)...';
+        appendLog('Mulai /run_digest', 'info');
+        runDigestBtn.disabled = true;
+
+        try {
+          const payload = {
+            path: projectPathInput.value.trim(),
+            output_dir: outputDirInput.value.trim(),
+            output_name: outputNameInput.value.trim(),
+            remove_blank_lines: removeBlankLinesCheckbox.checked,
+            model: modelTargetInput.value.trim() || 'gpt-4o-mini',
+            max_tokens_per_chunk: parseInt(maxTokensChunkInput.value || '16000', 10)
+          };
+
+          const r = await fetch('/run_digest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const j = await r.json();
+
+          if (!r.ok || !j.success) {
+            if (j && j.need_output_path) {
+              statusMessage.textContent = 'Memerlukan folder output.';
+              appendLog(`Server meminta pemilihan folder output (${j.reason}).`, 'info');
+              document.getElementById('pick-output-dir-btn')?.click();
+            } else {
+              statusMessage.textContent = 'Gagal membuat AI Digest.';
+              appendLog(`❌ ${j?.error || 'Unknown error'}`, 'error');
+            }
+            return;
+          }
+
+          appendLog(j.stdout || '(no extractor log)');
+          appendLog(j.message, 'success');
+          statusMessage.textContent = j.message;
+          await refreshOutputMetrics();
+        } catch (e) {
+          appendLog('❌ Error: ' + e.message, 'error');
+          statusMessage.textContent = 'Gagal.';
+        } finally {
+          runDigestBtn.disabled = false;
+        }
+      });
+
 
       // ---- Top nav chips: scroll & set active ----
       const navChips = document.querySelectorAll('.nav-chip');

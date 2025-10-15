@@ -5,6 +5,9 @@ from threading import Timer
 import webbrowser
 from flask import Flask, render_template, jsonify, request, Response
 import json
+from flask import send_file
+from ai_digest import parse_ba_wa, build_digest_to_zipfile
+import tempfile
 
 app = Flask(__name__)
 
@@ -443,9 +446,6 @@ def size_endpoint():
     return jsonify({'success': True, 'size_bytes': bytes_, 'formatted_size': _human(bytes_)})
 
 # --- Text extractor (tetap kompatibel, plus opsi stream baca output)
-
-@app.route('/run_textextractor', methods=['POST'])
-# (di route /run_textextractor, ambil flag dari body)
 @app.route('/run_textextractor', methods=['POST'])
 def run_extractor():
     try:
@@ -541,6 +541,92 @@ def output_metrics():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/run_digest', methods=['POST'])
+def run_digest():
+    try:
+        data = request.get_json(silent=True) or {}
+        override_path = data.get('path')
+        output_dir = data.get('output_dir')
+        output_name = (data.get('output_name') or '').strip()
+        remove_blank = bool(data.get('remove_blank_lines'))
+        model = (data.get('model') or 'gpt-4o-mini').strip()
+        max_tokens_per_chunk = int(data.get('max_tokens_per_chunk') or 16000)
+
+        needs, reason, suggested = _needs_output_destination(config_data, output_dir, output_name)
+        if needs:
+            return jsonify({
+                'success': False,
+                'need_output_path': True,
+                'reason': reason,
+                'suggested_name': suggested
+            }), 428
+
+        env = os.environ.copy()
+        if override_path:
+            env['VT_FOLDER'] = clean_path(override_path)
+
+        # Pastikan OUTPUT_FILE mengarah ke Output.txt di lokasi/nama sesuai UI
+        original_output_file = config_data.get("OUTPUT_FILE")
+        if output_dir or output_name:
+            base_name = output_name if output_name else (os.path.basename(original_output_file) if original_output_file else "Output.txt")
+            base_dir = clean_path(output_dir) if output_dir else (
+                clean_path(os.path.dirname(original_output_file)) if original_output_file else PROJECT_DIR
+            )
+            new_output_full = clean_path(os.path.join(base_dir, base_name))
+            os.makedirs(os.path.dirname(new_output_full), exist_ok=True)
+            config_data["OUTPUT_FILE"] = new_output_full
+            save_config(config_data)
+
+        # 1) Jalankan extractor seperti biasa → hasilkan Output.txt
+        process = subprocess.run(
+            [sys.executable, TEXT_EXTRACTOR_SCRIPT],
+            capture_output=True, text=True, encoding='utf-8', check=True, timeout=1800, env=env
+        )
+
+        out_path = config_data.get("OUTPUT_FILE") or os.path.join(PROJECT_DIR, "Output.txt")
+
+        # 2) Optional: hapus baris kosong
+        if remove_blank:
+            _remove_blank_lines_inplace(out_path)
+
+        # 3) Baca Output.txt → parse BA/WA → build ZIP (streaming ke tempfile)
+        with open(out_path, 'r', encoding='utf-8', errors='ignore') as f:
+            merged_text = f.read()
+
+        items = parse_ba_wa(merged_text)
+        if not items:
+            return jsonify({'success': False, 'error': 'Tidak ada blok BA/WA terdeteksi. Pastikan TextEXtractor menulis format BA/WA.'}), 500
+
+        tmp_zip_path = build_digest_to_zipfile(items, model=model, max_tokens_per_chunk=max_tokens_per_chunk)
+
+        # 4) Tentukan nama akhir ZIP di folder yang sama
+        orig_name = os.path.basename(out_path)
+        base, _ext = os.path.splitext(orig_name)
+        final_name = output_name if output_name else (base + ".zip")
+        if not final_name.lower().endswith(".zip"):
+            final_name += ".zip"
+
+        dest_dir = os.path.dirname(out_path) or PROJECT_DIR
+        dest_zip = os.path.join(dest_dir, final_name)
+
+        # 5) Pindahkan/overwrite ke tujuan
+        try:
+            if os.path.exists(dest_zip):
+                os.remove(dest_zip)
+        except Exception:
+            pass
+        os.replace(tmp_zip_path, dest_zip)
+
+        header = "\n".join(s for s in [process.stdout, process.stderr] if s).strip()
+        msg = f"✅ AI Digest Pack dibuat: {dest_zip}"
+        return jsonify({'success': True, 'message': msg, 'zip_path': dest_zip, 'stdout': header})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'TextEXtractor berjalan terlalu lama.'}), 504
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': e.stderr}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     def open_browser():
