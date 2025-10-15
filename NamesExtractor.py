@@ -62,6 +62,26 @@ def get_item_size(item_path):
         return size_bytes, format_file_size(size_bytes)
     except (OSError, IOError):
         return 0, "0 B"
+    
+def read_list_file(file_path):
+    if not os.path.exists(file_path):
+        return []
+    items = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            s = line.strip()
+            if s and not s.startswith('#'):
+                items.append(s)
+    return items
+
+def match_any_token(s, tokens):
+    if not tokens:
+        return True
+    s = s.replace("\\", "/")
+    for t in tokens:
+        if t and t in s:
+            return True
+    return False
 
 def read_exclude_file(file_path):
     if not os.path.exists(file_path):
@@ -102,30 +122,61 @@ def list_all_names(folder_path, include_files=True, include_size=False, exclude_
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
     exclude_names_set = set(exclude_names)
 
+    just_me_path = config_data.get("JUST_ME_FILE_PATH")
+    just_tokens = set(read_list_file(just_me_path) if just_me_path else [])
+
     log(f"✅ Memulai penelusuran dari direktori: {folder_path}")
 
     for root, dirs, files in os.walk(folder_path):
+        # 1) Hormati EXCLUDE: stop traversal jika nama folder di-exclude
         if os.path.basename(root) in exclude_names_set:
             del dirs[:]
             continue
 
-        if include_size:
-            size_bytes, formatted_size = get_item_size(root)
-            all_items.append({
-                'path': root,
-                'type': 'FOLDER',
-                'size_bytes': size_bytes,
-                'formatted_size': formatted_size
-            })
-        else:
-            all_items.append({'path': root, 'type': 'FOLDER'})
-
-        # prune dirs
+        # 2) Filter DIRS: JANGAN gunakan just_tokens untuk memangkas traversal
+        #    supaya scaffold folder tetap muncul (dan anak cucu masih bisa dicek).
         dirs[:] = [d for d in dirs if d not in exclude_names_set]
 
+        # 3) Tentukan apakah folder ini patut ditampilkan
+        #    Tampilkan jika: (a) whitelist kosong, atau (b) root match token, atau
+        #    (c) ada anak langsung (file/dir) yang match token.
+        def child_matches():
+            # Cek anak folder
+            for d in dirs:
+                if match_any_token(os.path.join(root, d), just_tokens):
+                    return True
+            # Cek file di level ini
+            for fn in files:
+                fullp = os.path.join(root, fn)
+                if match_any_token(fullp, just_tokens) or match_any_token(fn, just_tokens):
+                    return True
+            return False
+
+        show_folder = (not just_tokens) or match_any_token(root, just_tokens) or child_matches()
+
+        if show_folder:
+            if include_size:
+                size_bytes, formatted_size = get_item_size(root)
+                all_items.append({'path': root, 'type': 'FOLDER', 'size_bytes': size_bytes, 'formatted_size': formatted_size})
+            else:
+                all_items.append({'path': root, 'type': 'FOLDER'})
+
+        # 4) Files: filter berdasarkan EXCLUDE + JUST_ME
         if include_files:
-            add_files_to_list(all_items, files, root, exclude_names_set, include_size)
+            filtered_files = []
+            for filename in files:
+                if filename in exclude_names_set:
+                    continue
+                fullp = os.path.join(root, filename)
+                if just_tokens and not (match_any_token(fullp, just_tokens) or match_any_token(filename, just_tokens)):
+                    continue
+                filtered_files.append(filename)
+
+            # Penting: pakai filtered_files, bukan files mentah
+            add_files_to_list(all_items, filtered_files, root, exclude_names_set, include_size)
+
     return all_items
+
 
 def main():
     global is_json_out

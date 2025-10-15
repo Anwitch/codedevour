@@ -17,7 +17,8 @@ def load_config():
         "TARGET_FOLDER": "",
         "NAME_OUTPUT_FILE": "OutputAllNames.txt",
         "OUTPUT_FILE": "",                 # kosong = belum diset
-        "EXCLUDE_FILE_PATH": "exclude_me.txt"
+        "EXCLUDE_FILE_PATH": "exclude_me.txt",
+        "JUST_ME_FILE_PATH": "just_me.txt"
     }
     if not os.path.exists(CONFIG_FILE_PATH):
         with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
@@ -335,6 +336,35 @@ def manage_exclude_file():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/manage_just_me', methods=['GET', 'POST'])
+def manage_just_me():
+    try:
+        just_me_path = config_data.get("JUST_ME_FILE_PATH")
+        if not just_me_path:
+            return jsonify({'success': False, 'error': 'JUST_ME_FILE_PATH tidak diset di config.json'}), 500
+
+        if request.method == 'GET':
+            if not os.path.exists(just_me_path):
+                open(just_me_path, 'a', encoding='utf-8').close()
+            with open(just_me_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            return jsonify({'success': True, 'content': content})
+
+        # POST -> simpan
+        data = request.get_json(silent=True) or {}
+        new_content = data.get('content', '')
+
+        if len(new_content) > 200_000:
+            return jsonify({'success': False, 'error': 'Konten terlalu besar.'}), 400
+
+        norm = "\n".join(line.rstrip() for line in new_content.splitlines())
+        os.makedirs(os.path.dirname(just_me_path), exist_ok=True) if os.path.dirname(just_me_path) else None
+        with open(just_me_path, 'w', encoding='utf-8') as f:
+            f.write(norm + ("\n" if not norm.endswith("\n") else ""))
+
+        return jsonify({'success': True, 'message': 'Daftar just_me berhasil disimpan.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # --- Legacy (tetap ada): jalankan NameExtractor yang menulis file teks
 @app.route('/run_nameextractor', methods=['POST'])

@@ -45,6 +45,7 @@ def read_exclude_file(file_path):
                 out.append(s)
     return out
 
+# just_me helper
 def is_excluded(root, filename, exclude_set):
     """
     Exclude jika:
@@ -59,6 +60,41 @@ def is_excluded(root, filename, exclude_set):
     for token in exclude_set:
         if token in rel_root or token in filename:
             return True
+    return False
+
+# --- tambahkan helper baca just_me
+def read_list_file(file_path):
+    if not os.path.exists(file_path):
+        return []
+    out = []
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            s = line.strip()
+            if s and not s.startswith('#'):
+                out.append(s)
+    return out
+
+def match_any_token(path_or_name: str, tokens_set) -> bool:
+    if not tokens_set:
+        return True
+    p = path_or_name.replace("\\", "/")
+    for t in tokens_set:
+        if t and t in p:
+            return True
+    return False
+
+def dir_should_keep(root_path, just_set, exclude_set):
+    # Jika just_set kosong -> jangan pangkas
+    if not just_set:
+        return True
+    # Jika root_path mengandung token whitelist -> keep
+    if match_any_token(root_path, just_set):
+        return True
+    # Jika root_path di-exclude -> buang
+    base = os.path.basename(root_path)
+    if base in exclude_set:
+        return False
+    # Default: buang (kasar, tapi cepat)
     return False
 
 def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt', exclude_file=None, formatted_output=True):
@@ -78,6 +114,10 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
     exclude_set = set(exclude_names)
 
+    just_me_path = config_data.get("JUST_ME_FILE_PATH")
+    just_list = read_list_file(just_me_path) if just_me_path else []
+    just_set = set(just_list)
+
     header_note = "BA denotes the top border and WA denotes the bottom border used to separate files.\n"
 
     with open(output_file_name, 'w', encoding='utf-8', errors='ignore') as out:
@@ -88,10 +128,13 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
             # Prune folder yang di-exclude (berdasarkan nama / token)
             pruned_dirs = []
             for d in list(dirs):
-                if is_excluded(os.path.join(root, d), d, exclude_set):
+                fullp = os.path.join(root, d)
+                if is_excluded(fullp, d, exclude_set):
                     excluded_found.append(d)
-                else:
-                    pruned_dirs.append(d)
+                    continue
+                if not dir_should_keep(fullp, just_set, exclude_set):
+                    continue
+                pruned_dirs.append(d)
             dirs[:] = pruned_dirs  # efektif memangkas traversal
 
             for filename in files:
@@ -99,6 +142,9 @@ def combine_files_in_folder_recursive(folder_path, output_file_name='Output.txt'
                     excluded_found.append(filename)
                     continue
 
+                if just_set and not (match_any_token(os.path.join(root, filename), just_set) or match_any_token(filename, just_set)):
+                    continue
+                
                 ext = os.path.splitext(filename)[1].lower()
                 if WHITELIST_EXT is not None:
                     if ext and ext not in WHITELIST_EXT:
