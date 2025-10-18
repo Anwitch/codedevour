@@ -24,6 +24,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 ALLOWED_ROOTS: list[str] = []
 
 _config_cache: Dict[str, Any] | None = None
+_config_mtime: float = 0.0  # Track config file modification time
 _lock = Lock()
 
 
@@ -105,16 +106,20 @@ def _resolve_default(value: str | None, default_path: Path) -> str:
 
 
 def load_config() -> Dict[str, Any]:
-    global _config_cache
+    global _config_cache, _config_mtime
 
     with _lock:
         ensure_directories()
 
         if not CONFIG_FILE_PATH.exists():
             _config_cache = DEFAULT_CONFIG.copy()
+            _config_mtime = 0.0
             with CONFIG_FILE_PATH.open("w", encoding="utf-8") as fp:
                 json.dump(_config_cache, fp, indent=4)
             return _config_cache
+
+        # PERFORMANCE: Track file modification time for smart reload
+        _config_mtime = CONFIG_FILE_PATH.stat().st_mtime
 
         with CONFIG_FILE_PATH.open("r", encoding="utf-8") as fp:
             loaded = json.load(fp)
@@ -145,19 +150,36 @@ def load_config() -> Dict[str, Any]:
 
 
 def get_config() -> Dict[str, Any]:
-    global _config_cache
+    """
+    Get config with smart reload on file modification.
+    
+    PERFORMANCE: Only reloads if config.json has been modified since last load.
+    Prevents stale data while avoiding unnecessary I/O.
+    """
+    global _config_cache, _config_mtime
+    
+    # Check if config file has been modified
+    if _config_cache is not None and CONFIG_FILE_PATH.exists():
+        current_mtime = CONFIG_FILE_PATH.stat().st_mtime
+        if current_mtime > _config_mtime:
+            # Config file changed, reload
+            return load_config()
+    
     if _config_cache is None:
         return load_config()
+    
     return _config_cache
 
 
 def save_config(data: Dict[str, Any]) -> None:
-    global _config_cache
+    global _config_cache, _config_mtime
     with _lock:
         ensure_directories()
         with CONFIG_FILE_PATH.open("w", encoding="utf-8") as fp:
             json.dump(data, fp, indent=4)
         _config_cache = data
+        # Update mtime after saving
+        _config_mtime = CONFIG_FILE_PATH.stat().st_mtime
 
 
 def get_config_value(key: str, default: Any = None) -> Any:

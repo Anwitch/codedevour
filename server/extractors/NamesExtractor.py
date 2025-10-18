@@ -109,11 +109,109 @@ def read_exclude_file(file_path: str) -> list[str]:
     return excluded
 
 
-def add_files_to_list(all_items: list[dict], files: list[str], root: str, exclude_names_set: set[str], include_size: bool) -> None:
-    for filename in files:
-        if filename in exclude_names_set:
+def is_excluded_path(root: str, filename: str, exclude_set: set[str], base_folder: str = "") -> bool:
+    """
+    Cek apakah file/folder harus di-exclude berdasarkan path lengkap.
+    Mendukung:
+    - Nama file: page.html
+    - Path relatif: src/pages/page.html
+    - Pattern substring: /node_modules/, .log
+    """
+    full_path = os.path.join(root, filename)
+    
+    # Buat relative path jika base folder ada
+    if base_folder:
+        try:
+            rel_path = os.path.relpath(full_path, base_folder).replace("\\", "/")
+        except ValueError:
+            rel_path = full_path.replace("\\", "/")
+    else:
+        rel_path = full_path.replace("\\", "/")
+    
+    # Cek setiap pattern
+    for pattern in exclude_set:
+        if not pattern:
             continue
+        
+        pattern_norm = pattern.replace("\\", "/")
+        
+        # Exact match nama file
+        if pattern == filename:
+            return True
+        
+        # Exact match relative path
+        if pattern_norm == rel_path:
+            return True
+        
+        # Substring match
+        if pattern_norm in rel_path:
+            return True
+        
+        # Backward compatibility: nama file saja
+        if pattern in filename:
+            return True
+    
+    return False
+
+
+def matches_just_pattern(path: str, filename: str, just_set: set[str], base_folder: str = "") -> bool:
+    """
+    Cek apakah file match dengan pattern di just_me list.
+    """
+    if not just_set:
+        return True
+    
+    # Buat relative path
+    if base_folder:
+        try:
+            rel_path = os.path.relpath(path, base_folder).replace("\\", "/")
+        except ValueError:
+            rel_path = path.replace("\\", "/")
+    else:
+        rel_path = path.replace("\\", "/")
+    
+    # Cek setiap pattern
+    for pattern in just_set:
+        if not pattern:
+            continue
+        
+        pattern_norm = pattern.replace("\\", "/")
+        
+        # Exact match
+        if pattern_norm == rel_path:
+            return True
+        
+        # Substring match
+        if pattern_norm in rel_path:
+            return True
+        
+        # Filename match
+        if pattern == filename:
+            return True
+    
+    return False
+
+
+def add_files_to_list(
+    all_items: list[dict], 
+    files: list[str], 
+    root: str, 
+    exclude_set: set[str], 
+    just_set: set[str],
+    include_size: bool,
+    base_folder: str = ""
+) -> None:
+    for filename in files:
+        # Cek exclude
+        if is_excluded_path(root, filename, exclude_set, base_folder):
+            continue
+        
         file_path = os.path.join(root, filename)
+        
+        # Cek just_me
+        if just_set and not matches_just_pattern(file_path, filename, just_set, base_folder):
+            continue
+        
         if include_size:
             size_bytes, formatted_size = get_item_size(file_path)
             all_items.append(
@@ -135,31 +233,45 @@ def list_all_names(folder_path: str, include_files: bool = True, include_size: b
 
     all_items: list[dict] = []
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
-    exclude_names_set = set(exclude_names)
+    exclude_set = set(exclude_names)
 
     just_me_path = config_data.get("JUST_ME_FILE_PATH")
-    just_tokens = set(read_list_file(just_me_path) if just_me_path else [])
+    just_set = set(read_list_file(just_me_path) if just_me_path else [])
+
+    # Base folder untuk relative path calculation
+    base_folder = os.path.abspath(folder_path)
 
     log(f"-> Memulai penelusuran dari direktori: {folder_path}")
 
     for root, dirs, files in os.walk(folder_path):
-        if os.path.basename(root) in exclude_names_set:
-            del dirs[:]
-            continue
+        # Filter direktori yang di-exclude
+        dirs[:] = [
+            d for d in dirs 
+            if not is_excluded_path(root, d, exclude_set, base_folder)
+        ]
 
-        dirs[:] = [directory for directory in dirs if directory not in exclude_names_set]
-
-        def child_matches() -> bool:
-            for directory in dirs:
-                if match_any_token(os.path.join(root, directory), just_tokens):
-                    return True
-            for filename in files:
-                full_path = os.path.join(root, filename)
-                if match_any_token(full_path, just_tokens) or match_any_token(filename, just_tokens):
-                    return True
-            return False
-
-        show_folder = (not just_tokens) or match_any_token(root, just_tokens) or child_matches()
+        # Jika just_set ada, filter direktori berdasarkan just_set juga
+        if just_set:
+            # Cek apakah ada child yang match dengan just_set
+            def has_matching_child() -> bool:
+                # Cek direktori
+                for directory in dirs:
+                    dir_path = os.path.join(root, directory)
+                    if matches_just_pattern(dir_path, directory, just_set, base_folder):
+                        return True
+                
+                # Cek files
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    if matches_just_pattern(file_path, filename, just_set, base_folder):
+                        return True
+                
+                return False
+            
+            # Tampilkan folder jika ada child yang match atau folder sendiri yang match
+            show_folder = has_matching_child() or matches_just_pattern(root, os.path.basename(root), just_set, base_folder)
+        else:
+            show_folder = True
 
         if show_folder:
             if include_size:
@@ -171,18 +283,7 @@ def list_all_names(folder_path: str, include_files: bool = True, include_size: b
                 all_items.append({"path": root, "type": "FOLDER"})
 
         if include_files:
-            filtered_files: list[str] = []
-            for filename in files:
-                if filename in exclude_names_set:
-                    continue
-                full_path = os.path.join(root, filename)
-                if just_tokens and not (
-                    match_any_token(full_path, just_tokens) or match_any_token(filename, just_tokens)
-                ):
-                    continue
-                filtered_files.append(filename)
-
-            add_files_to_list(all_items, filtered_files, root, exclude_names_set, include_size)
+            add_files_to_list(all_items, files, root, exclude_set, just_set, include_size, base_folder)
 
     return all_items
 

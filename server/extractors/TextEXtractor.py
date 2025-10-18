@@ -82,14 +82,50 @@ def read_exclude_file(file_path: str) -> list[str]:
     return entries
 
 
-def is_excluded(root: str, filename: str, exclude_set: set[str]) -> bool:
-    base = os.path.basename(root)
-    if base in exclude_set or filename in exclude_set:
-        return True
-    rel_root = root.replace("\\", "/")
-    for token in exclude_set:
-        if token in rel_root or token in filename:
+def is_excluded(root: str, filename: str, exclude_set: set[str], base_folder: str = "") -> bool:
+    """
+    Cek apakah file/folder harus di-exclude.
+    Sekarang mendukung:
+    - Nama file saja: page.html
+    - Path relatif: src/pages/page.html
+    - Pattern: **/node_modules/**, *.log
+    """
+    # Buat full path dan relative path
+    full_path = os.path.join(root, filename)
+    normalized_full = full_path.replace("\\", "/")
+    
+    # Buat relative path dari base folder jika ada
+    if base_folder:
+        try:
+            rel_path = os.path.relpath(full_path, base_folder).replace("\\", "/")
+        except ValueError:
+            rel_path = normalized_full
+    else:
+        rel_path = normalized_full
+    
+    # Cek setiap pattern di exclude_set
+    for pattern in exclude_set:
+        if not pattern:
+            continue
+            
+        pattern_norm = pattern.replace("\\", "/")
+        
+        # Exact match dengan nama file
+        if pattern == filename:
             return True
+        
+        # Exact match dengan relative path
+        if pattern_norm == rel_path:
+            return True
+        
+        # Substring match untuk path
+        if pattern_norm in rel_path:
+            return True
+        
+        # Substring match untuk nama file (backward compatibility)
+        if pattern in filename:
+            return True
+    
     return False
 
 
@@ -116,14 +152,42 @@ def match_any_token(path_or_name: str, tokens_set: set[str]) -> bool:
     return False
 
 
-def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str]) -> bool:
+def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], base_folder: str = "") -> bool:
+    """
+    Tentukan apakah direktori harus di-keep berdasarkan just_me list.
+    Sekarang mendukung path lengkap.
+    """
     if not just_set:
         return True
-    if match_any_token(root_path, just_set):
-        return True
-    base = os.path.basename(root_path)
-    if base in exclude_set:
-        return False
+    
+    # Buat relative path jika base folder ada
+    if base_folder:
+        try:
+            rel_path = os.path.relpath(root_path, base_folder).replace("\\", "/")
+        except ValueError:
+            rel_path = root_path.replace("\\", "/")
+    else:
+        rel_path = root_path.replace("\\", "/")
+    
+    # Cek apakah ada pattern yang match
+    for pattern in just_set:
+        if not pattern:
+            continue
+        
+        pattern_norm = pattern.replace("\\", "/")
+        
+        # Exact match
+        if pattern_norm == rel_path:
+            return True
+        
+        # Substring match (untuk folder parent)
+        if pattern_norm in rel_path or rel_path in pattern_norm:
+            return True
+        
+        # Basename match (backward compatibility)
+        if pattern == os.path.basename(root_path):
+            return True
+    
     return False
 
 
@@ -146,6 +210,9 @@ def combine_files_in_folder_recursive(
     just_me_path = config_data.get("JUST_ME_FILE_PATH")
     just_set = set(read_list_file(just_me_path) if just_me_path else [])
 
+    # Simpan base folder untuk relative path calculation
+    base_folder = os.path.abspath(folder_path)
+
     header_note = "BA denotes the top border and WA denotes the bottom border used to separate files.\n"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,22 +224,55 @@ def combine_files_in_folder_recursive(
             pruned_dirs: list[str] = []
             for directory in list(dirs):
                 full_path = os.path.join(root, directory)
-                if is_excluded(full_path, directory, exclude_set):
+                
+                # Cek exclude dengan base folder
+                if is_excluded(root, directory, exclude_set, base_folder):
                     continue
-                if not dir_should_keep(full_path, just_set, exclude_set):
+                
+                # Cek just_me dengan base folder
+                if not dir_should_keep(full_path, just_set, exclude_set, base_folder):
                     continue
+                    
                 pruned_dirs.append(directory)
             dirs[:] = pruned_dirs
 
             for filename in files:
-                if is_excluded(root, filename, exclude_set):
+                # Cek exclude dengan base folder
+                if is_excluded(root, filename, exclude_set, base_folder):
                     continue
 
-                if just_set and not (
-                    match_any_token(os.path.join(root, filename), just_set)
-                    or match_any_token(filename, just_set)
-                ):
-                    continue
+                # Cek just_me dengan path lengkap
+                if just_set:
+                    file_path = os.path.join(root, filename)
+                    try:
+                        rel_path = os.path.relpath(file_path, base_folder).replace("\\", "/")
+                    except ValueError:
+                        rel_path = file_path.replace("\\", "/")
+                    
+                    # Cek apakah file match dengan pattern di just_set
+                    matched = False
+                    for pattern in just_set:
+                        if not pattern:
+                            continue
+                        pattern_norm = pattern.replace("\\", "/")
+                        
+                        # Exact match
+                        if pattern_norm == rel_path:
+                            matched = True
+                            break
+                        
+                        # Substring match
+                        if pattern_norm in rel_path:
+                            matched = True
+                            break
+                        
+                        # Filename match (backward compatibility)
+                        if pattern == filename:
+                            matched = True
+                            break
+                    
+                    if not matched:
+                        continue
 
                 ext = os.path.splitext(filename)[1].lower()
                 if WHITELIST_EXT is not None and ext and ext not in WHITELIST_EXT:

@@ -122,7 +122,9 @@ def run_extractor():
                 yield ("\n".join(prelude_parts)).strip() + "\n\n"
 
             with out_path.open("r", encoding="utf-8", errors="ignore") as handle:
-                for chunk in iter(lambda: handle.read(8192), ""):
+                # PERFORMANCE: Increased chunk size from 8192 to 16384 bytes
+                # for better I/O efficiency (fewer syscalls)
+                for chunk in iter(lambda: handle.read(16384), ""):
                     yield chunk
 
         return Response(generate(), mimetype="text/plain; charset=utf-8")
