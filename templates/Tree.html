@@ -152,6 +152,9 @@
         <button class="nav-chip active" data-target="#names-panel">NamesExtractor</button>
         <button class="nav-chip" data-target="#text-extractor-tab">TextExtractor</button>
         <button class="nav-chip" data-target="#exclude-me-tab">Exclude Me</button>
+        <button class="nav-chip" data-target="#just-me-tab">Just Me</button>
+        <button class="nav-chip" onclick="window.location.href='/visualizer'" style="cursor: pointer;">🔍 Code
+          Explorer</button>
         <button class="nav-chip" data-target="#status-panel">Activity Log</button>
       </div>
     </div>
@@ -208,6 +211,8 @@
             data-tab="text-extractor-tab">TextExtractor</button>
           <button class="tab-button py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
             data-tab="exclude-me-tab">Exclude Me</button>
+          <button class="tab-button py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
+            data-tab="just-me-tab">Just Me</button>
         </div>
 
         <div id="text-extractor-tab" class="tab-content">
@@ -235,23 +240,6 @@
               Hapus baris kosong dari Output
             </label>
           </div>
-          <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="flex items-center gap-3">
-              <label class="w-40 text-sm text-gray-700 font-medium">Model Target</label>
-              <input id="model-target-input" type="text" placeholder="gpt-4o-mini"
-                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
-            </div>
-            <div class="flex items-center gap-3">
-              <label class="w-40 text-sm text-gray-700 font-medium">Max Tokens/Chunk</label>
-              <input id="max-tokens-chunk-input" type="number" placeholder="16000"
-                class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
-            </div>
-          </div>
-
-          <button id="run-digest-btn"
-            class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
-            Buat AI Digest (ZIP)
-          </button>
           <button id="run-text-extractor-btn"
             class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
             Jalankan TextEXtractor.py
@@ -274,6 +262,19 @@
             class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
           <button id="save-exclude-btn"
             class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Simpan</button>
+        </div>
+        <div id="just-me-tab" class="tab-content hidden">
+          <p class="text-sm text-gray-600 mb-4">
+            Daftar <strong>whitelist</strong>. Hanya item yang cocok salah satu baris di sini yang akan diproses.
+            Kosongkan untuk mematikan whitelist dan kembali ke mode normal.
+          </p>
+
+          <textarea id="just-me-textarea"
+            class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
+
+          <button id="save-just-me-btn" class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">
+            Simpan
+          </button>
         </div>
       </div>
     </div>
@@ -311,56 +312,8 @@
       const pickOutputDirBtn = document.getElementById('pick-output-dir-btn');
       const removeBlankLinesCheckbox = document.getElementById('remove-blank-lines-checkbox');
       const metricsBadge = document.getElementById('output-metrics');
-      const runDigestBtn = document.getElementById('run-digest-btn');
-      const modelTargetInput = document.getElementById('model-target-input');
-      const maxTokensChunkInput = document.getElementById('max-tokens-chunk-input');
-
-      runDigestBtn?.addEventListener('click', async () => {
-        statusMessage.textContent = 'Membuat AI Digest Pack (ZIP)...';
-        appendLog('Mulai /run_digest', 'info');
-        runDigestBtn.disabled = true;
-
-        try {
-          const payload = {
-            path: projectPathInput.value.trim(),
-            output_dir: outputDirInput.value.trim(),
-            output_name: outputNameInput.value.trim(),
-            remove_blank_lines: removeBlankLinesCheckbox.checked,
-            model: modelTargetInput.value.trim() || 'gpt-4o-mini',
-            max_tokens_per_chunk: parseInt(maxTokensChunkInput.value || '16000', 10)
-          };
-
-          const r = await fetch('/run_digest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const j = await r.json();
-
-          if (!r.ok || !j.success) {
-            if (j && j.need_output_path) {
-              statusMessage.textContent = 'Memerlukan folder output.';
-              appendLog(`Server meminta pemilihan folder output (${j.reason}).`, 'info');
-              document.getElementById('pick-output-dir-btn')?.click();
-            } else {
-              statusMessage.textContent = 'Gagal membuat AI Digest.';
-              appendLog(`❌ ${j?.error || 'Unknown error'}`, 'error');
-            }
-            return;
-          }
-
-          appendLog(j.stdout || '(no extractor log)');
-          appendLog(j.message, 'success');
-          statusMessage.textContent = j.message;
-          await refreshOutputMetrics();
-        } catch (e) {
-          appendLog('❌ Error: ' + e.message, 'error');
-          statusMessage.textContent = 'Gagal.';
-        } finally {
-          runDigestBtn.disabled = false;
-        }
-      });
-
+      const justMeTextarea = document.getElementById('just-me-textarea');
+      const saveJustMeBtn = document.getElementById('save-just-me-btn');
 
       // ---- Top nav chips: scroll & set active ----
       const navChips = document.querySelectorAll('.nav-chip');
@@ -378,6 +331,28 @@
           }
           if (target === '#text-extractor-tab') {
             document.querySelector('.tab-button[data-tab="text-extractor-tab"]')?.click();
+          }
+          if (target === '#just-me-tab') {
+            document.querySelector('.tab-button[data-tab="just-me-tab"]')?.click();
+          }
+        });
+      });
+
+      // ---- Tab switching: hide/show konten + load Just Me on demand ----
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          // sembunyikan semua panel konten
+          document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+          // reset state tombol
+          document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+
+          const target = btn.getAttribute('data-tab');
+          document.getElementById(target)?.classList.remove('hidden');
+          btn.classList.add('active');
+
+          // lazy load whitelist just_me saat tab-nya dibuka
+          if (target === 'just-me-tab') {
+            await ensureJustMeLoaded();
           }
         });
       });
@@ -418,6 +393,22 @@
         } catch { metricsBadge.textContent = '(—)'; }
       }
 
+      async function ensureJustMeLoaded() {
+        if (!justMeTextarea || justMeTextarea.dataset.loaded) return;
+        try {
+          const r = await fetch('/manage_just_me');
+          const j = await r.json();
+          if (r.ok && j.success) {
+            justMeTextarea.value = j.content || '';
+            justMeTextarea.dataset.loaded = '1';
+          } else {
+            appendLog(`Gagal memuat just_me: ${j.error || 'unknown'}`, 'error');
+          }
+        } catch (e) {
+          appendLog(`Gagal memuat just_me: ${e}`, 'error');
+        }
+      }
+
       function appendLog(text, type = 'info') {
         const li = document.createElement('li');
         li.classList.add('fade-in');
@@ -431,12 +422,20 @@
       const normalizeList = (text) => {
         return text.split(/\r?\n|,/g).map(s => s.trim()).filter(Boolean);
       };
-      const addToExcludeTextarea = (items) => {
-        const existing = normalizeList(excludeListTextarea.value);
+
+      // gabung unik ke textarea target
+      const addToListTextarea = (targetTextarea, items) => {
+        const existing = normalizeList(targetTextarea.value);
         const set = new Set(existing);
         items.forEach(s => set.add(s));
-        excludeListTextarea.value = Array.from(set).join('\n');
+        targetTextarea.value = Array.from(set).join('\n');
       };
+
+      // adapter lama biar kode lain gak rusak
+      const addToExcludeTextarea = (items) => addToListTextarea(excludeListTextarea, items);
+      // NEW: untuk just_me
+      const addToJustMeTextarea = (items) => addToListTextarea(justMeTextarea, items);
+
       excludeListTextarea.addEventListener('dragover', (e) => {
         e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
         excludeListTextarea.classList.add('drop-target');
@@ -451,6 +450,23 @@
         const items = normalizeList(text);
         addToExcludeTextarea(items);
       });
+
+      // --- DnD ke JUST_ME ---
+      justMeTextarea.addEventListener('dragover', (e) => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+        justMeTextarea.classList.add('drop-target');
+      });
+      justMeTextarea.addEventListener('dragleave', () => {
+        justMeTextarea.classList.remove('drop-target');
+      });
+      justMeTextarea.addEventListener('drop', (e) => {
+        e.preventDefault(); justMeTextarea.classList.remove('drop-target');
+        const text = e.dataTransfer.getData('text/plain') || '';
+        if (!text) return;
+        const items = normalizeList(text);
+        addToJustMeTextarea(items);
+      });
+
 
       // --- Build tree helpers ---
       const createFileElement = (name, size) => {
@@ -822,6 +838,17 @@
               });
           }
         });
+      });
+
+      // Save Just_Me
+      saveJustMeBtn.addEventListener('click', () => {
+        const newContent = justMeTextarea.value;
+        handleButtonClick(
+          '/manage_just_me',
+          saveJustMeBtn,
+          'Menyimpan Just Me.',
+          { content: newContent }
+        );
       });
 
       // Save Exclude
