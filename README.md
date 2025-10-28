@@ -15,16 +15,18 @@
 ### 📝 Smart Text Bundler
 * **Automatic file merging** with customizable whitelist (30+ file extensions supported)
 * **Binary detection** to skip non-text files automatically
-* **Size limits** (2MB per file) to prevent performance issues
+* **Configurable size limits** (default 10MB per file, adjustable via config)
 * **Blank-line removal** option for cleaner output
 * **Streaming output** for large projects without memory issues
 * **Token counting** with `tiktoken` integration for AI model compatibility
+* **Extracted files list** – automatically generates `OutputExtractedFiles.txt` with list of processed files
 
 ### 🎯 Advanced Filtering
-* **Whitelist/Blacklist system** via `exclude_me.txt`
+* **Whitelist/Blacklist system** via `exclude_me.txt` and `just_me.txt`
 * **Automatic `.gitignore` sync** – patterns are merged into exclusions
 * **Path-based filtering** for precise control
 * **Smart exclusion matching** by name or relative path
+* **Just Me filtering** – extract only specific files or folders you need
 
 ### 📊 Real-Time Metrics
 * **Word count** · **Token count** · **Line count** · **File size**
@@ -32,10 +34,11 @@
 * **Live output statistics** updating as files are processed
 
 ### 🎨 Modern UI Experience
-* **Tab navigation** (NamesExtractor / TextExtractor / Exclusions / Activity Log)
+* **Tab navigation** (NamesExtractor / TextExtractor / Exclusions / Just Me / Activity Log)
 * **TailwindCSS design** with crimson theme
 * **Responsive layout** for all screen sizes
 * **Native system dialogs** for file operations
+* **Quick folder access** to view extracted files
 
 ---
 
@@ -186,6 +189,27 @@ If it doesn't open automatically, manually navigate to that URL.
 **Supported file types:**
 `.py .js .ts .tsx .jsx .json .md .txt .html .css .yml .yaml .toml .ini .cfg .sql .sh .bat .ps1 .c .cpp .h .hpp .java .kt .go .rs .vue .xml`
 
+### Output Files
+
+When you run TextExtractor, **two files are generated**:
+
+1. **`Output.txt`** (or your custom name)
+   - Location: User-specified output folder (downloaded via browser)
+   - Content: Combined text content of all extracted files
+   - Format: Files separated by `BA` (top border) and `WA` (bottom border) markers
+   - Use: Feed to AI models, documentation, code review
+
+2. **`OutputExtractedFiles.txt`** ✨ **Auto-generated**
+   - Location: `data/output/` in the CodeDevour project directory
+   - Content: List of all files that were successfully extracted
+   - Format: Same as `OutputAllNames.txt` – `path; [FILE]` per line
+   - Use: Quick verification, tracking what was processed, debugging filters
+
+**Why two files?**
+- `Output.txt` is the actual bundled code (can be large, 100MB+)
+- `OutputExtractedFiles.txt` is lightweight metadata for quick reference
+- You can verify extraction results without opening the large output file
+
 ### 4. Manage Exclusions (Exclude Me)
 
 **Purpose:** Control which files/folders to skip during bundling
@@ -202,7 +226,29 @@ If it doesn't open automatically, manually navigate to that URL.
 - `.gitignore` patterns are automatically imported under `# === PATTERNS FROM .gitignore ===`
 - Manual patterns are preserved above the `.gitignore` section
 
-### 5. Monitor Activity (Activity Log)
+### 5. Use Just Me Filter (Optional)
+
+**Purpose:** Extract only specific files or folders instead of everything
+
+* Navigate to the **Just Me** tab (right panel)
+* **Add patterns** for files/folders you want to include:
+  - Filenames: `app.py`, `config.json`, `UserController.js`
+  - Folder paths: `src/`, `components/`, `backend/controllers/`
+  - Patterns work with **nested files** – all subdirectories are scanned
+* **Leave empty** to process all files (default behavior)
+* **Combines with exclusions** – excluded items are still skipped even if in Just Me list
+
+**Example scenarios:**
+- **Focus on authentication code:** Add `auth` to extract all auth-related files
+- **Extract only one file:** Add exact filename like `adminApplicationController.js`
+- **Process specific module:** Add `src/services/` to bundle only service layer
+
+**Tips:**
+- Just Me is **inclusive** – only specified items are processed
+- Use **folder paths** to extract entire directories
+- Drag items from NamesExtractor tree into Just Me tab
+
+### 6. Monitor Activity (Activity Log)
 
 * View **real-time logs** of all operations
 * See **timestamps** for each action
@@ -230,20 +276,38 @@ If it doesn't open automatically, manually navigate to that URL.
 * `OUTPUT_FILE` – Output file path (can be changed from UI)
 * `NAME_OUTPUT_FILE` – File list output path
 * `EXCLUDE_FILE_PATH` – Path to exclusion list file
+* `JUST_ME_FILE_PATH` – Path to inclusion filter file
+* `MAX_FILE_SIZE_MB` – Maximum file size in MB (default: 10)
 
 > The `OUTPUT_FILE` can be changed on-the-fly from the UI and will be automatically persisted to `config.json`.
 
 ### File Processing Limits
 
-* **Maximum file size:** 2 MB per file
+* **Maximum file size:** 10 MB per file (configurable via `MAX_FILE_SIZE_MB` in config)
 * **Binary detection:** Files with >30% non-text characters are automatically skipped
 * **Sample size:** 4096 bytes for binary detection
+* **Performance optimizations:** 128KB chunk size for efficient I/O, 2-hour timeout for large projects
 
 ### Exclusion Rules
 
 * Items are excluded if their **name** or **relative path** contains any pattern from `exclude_me.txt`
 * Matching is case-sensitive
 * Patterns use substring matching (not regex)
+
+### Just Me (Inclusion) Rules
+
+The **Just Me** filter allows you to extract **only specific files or folders** instead of processing everything:
+
+* Add filenames (e.g., `app.py`, `config.json`) to extract only those files
+* Add folder names (e.g., `src/`, `components/`) to extract entire directories
+* Supports **nested files** – if you specify a filename, all subdirectories are scanned
+* Combines with exclusion rules – excluded items are still skipped
+* Leave empty to process all files (subject to exclusions)
+
+**Example use cases:**
+* Extract only controller files: Add `*Controller.js` patterns
+* Focus on specific module: Add `src/auth/` to process only auth-related code
+* Single file extraction: Add exact filename like `UserModel.py`
 
 ---
 
@@ -261,6 +325,8 @@ If it doesn't open automatically, manually navigate to that URL.
 | `POST` | `/run_textextractor`      | Bundle files with streaming output                               |
 |  `GET` | `/manage_exclude_file`    | Read `exclude_me.txt` content                                    |
 | `POST` | `/manage_exclude_file`    | Save `exclude_me.txt` content                                    |
+|  `GET` | `/manage_just_me`         | Read `just_me.txt` content (inclusion filter)                    |
+| `POST` | `/manage_just_me`         | Save `just_me.txt` content                                       |
 |  `GET` | `/output_metrics`         | Get output statistics (words, tokens, lines, chars, bytes)       |
 
 ---

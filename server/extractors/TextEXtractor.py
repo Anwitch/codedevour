@@ -53,7 +53,9 @@ WHITELIST_EXT = {
     ".vue",
     ".xml",
 }
-MAX_FILE_BYTES = 2 * 1024 * 1024  # 2 MB
+# Increased from 2MB to 10MB for larger source files
+# Can be overridden in config.json with MAX_FILE_SIZE_MB
+MAX_FILE_BYTES = config_data.get("MAX_FILE_SIZE_MB", 10) * 1024 * 1024
 
 
 def log(*args, **kwargs):
@@ -156,6 +158,9 @@ def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], b
     """
     Tentukan apakah direktori harus di-keep berdasarkan just_me list.
     Sekarang mendukung path lengkap.
+    
+    **IMPORTANT:** Jika just_set hanya berisi filenames (bukan folder paths),
+    maka SEMUA directories harus di-keep agar bisa scan nested files.
     """
     if not just_set:
         return True
@@ -187,6 +192,13 @@ def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], b
         # Basename match (backward compatibility)
         if pattern == os.path.basename(root_path):
             return True
+        
+        # **NEW:** Jika pattern adalah filename (tidak ada / atau \), 
+        # keep directory untuk scan nested files
+        if "/" not in pattern and "\\" not in pattern:
+            # Pattern adalah filename, bukan path
+            # Keep directory agar bisa scan files di dalamnya
+            return True
     
     return False
 
@@ -216,6 +228,23 @@ def combine_files_in_folder_recursive(
     header_note = "BA denotes the top border and WA denotes the bottom border used to separate files.\n"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # List untuk track extracted files
+    extracted_files: list[str] = []
+    
+    # Progress tracking
+    file_count = 0
+    total_size = 0
+    skipped_count = 0
+    
+    # Summary info
+    log(f"[*] Memulai scanning folder: {folder_path}")
+    if just_set:
+        log(f"[*] Filter: Hanya {len(just_set)} file/folder → {just_set}")
+    else:
+        log(f"[*] Filter: ALL FILES (exclude {len(exclude_set)} patterns)")
+    log(f"[*] Max file size: {MAX_FILE_BYTES / 1024 / 1024:.1f} MB")
+    
     with output_path.open("w", encoding="utf-8", errors="ignore") as out:
         if formatted_output:
             out.write(header_note)
@@ -237,8 +266,11 @@ def combine_files_in_folder_recursive(
             dirs[:] = pruned_dirs
 
             for filename in files:
+                file_path = os.path.join(root, filename)
+                
                 # Cek exclude dengan base folder
                 if is_excluded(root, filename, exclude_set, base_folder):
+                    skipped_count += 1
                     continue
 
                 # Cek just_me dengan path lengkap
@@ -272,10 +304,12 @@ def combine_files_in_folder_recursive(
                             break
                     
                     if not matched:
+                        skipped_count += 1
                         continue
 
                 ext = os.path.splitext(filename)[1].lower()
                 if WHITELIST_EXT is not None and ext and ext not in WHITELIST_EXT:
+                    skipped_count += 1
                     continue
 
                 file_path = os.path.join(root, filename)
@@ -283,15 +317,18 @@ def combine_files_in_folder_recursive(
                 try:
                     size = os.path.getsize(file_path)
                 except Exception:
+                    skipped_count += 1
                     continue
 
                 if size > MAX_FILE_BYTES:
+                    skipped_count += 1
                     continue
 
                 try:
                     with open(file_path, "rb") as binary_file:
                         sample = binary_file.read(4096)
                         if looks_binary(sample):
+                            skipped_count += 1
                             continue
 
                     with open(file_path, "r", encoding="utf-8", errors="ignore") as handle:
@@ -306,10 +343,44 @@ def combine_files_in_folder_recursive(
                         out.write(f"----- {file_path} -----\n")
                         out.write(content)
                         out.write("\n\n")
+                    
+                    file_count += 1
+                    total_size += size
+                    
+                    # Track extracted file
+                    extracted_files.append(file_path)
+                    
+                    # Progress log setiap 100 files
+                    if file_count % 100 == 0:
+                        log(f"[+] Diproses: {file_count} files ({total_size / 1024 / 1024:.1f} MB)")
+                    
                 except Exception as exc:
                     log(f"[!] Melewatkan file '{file_path}' karena kesalahan: {exc}")
+                    skipped_count += 1
 
-    log(f"\n-> Berhasil! Semua konten digabungkan ke '{output_path}'.")
+    # Save extracted files list to project directory
+    project_output_dir = ROOT_DIR / "data" / "output"
+    project_output_dir.mkdir(parents=True, exist_ok=True)
+    extracted_list_path = project_output_dir / "OutputExtractedFiles.txt"
+    
+    try:
+        with extracted_list_path.open("w", encoding="utf-8") as f:
+            # Write target folder as root
+            f.write(f"{base_folder}; [FOLDER]\n")
+            
+            # Write all extracted files
+            for file_path in extracted_files:
+                # Normalize path separators
+                normalized_path = file_path.replace("\\", "/")
+                f.write(f"{normalized_path}; [FILE]\n")
+        
+        log(f"-> File list saved: '{extracted_list_path}'")
+    except Exception as exc:
+        log(f"[!] Warning: Gagal menyimpan file list: {exc}")
+
+    log(f"\n-> Berhasil! {file_count} files digabungkan ({total_size / 1024 / 1024:.1f} MB)")
+    log(f"-> Skipped: {skipped_count} files (binary/too large/errors)")
+    log(f"-> Output: '{output_path}'.")
 
 
 def main() -> None:

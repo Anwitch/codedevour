@@ -217,6 +217,43 @@
           <p class="text-sm text-gray-600 mb-4">
             Klik tombol di bawah untuk menjalankan <code>TextEXtractor.py</code> dan melihat outputnya.
           </p>
+
+          <!-- ✨ PROGRESS BAR SECTION ✨ -->
+          <div id="progress-container" class="hidden mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-semibold text-gray-800">📊 Extraction Progress</h4>
+              <button id="cancel-task-btn"
+                class="text-xs px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
+                ❌ Cancel
+              </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-6 mb-2 overflow-hidden">
+              <div id="progress-bar"
+                class="bg-primary-red h-6 rounded-full transition-all duration-300 flex items-center justify-center text-white text-xs font-bold"
+                style="width: 0%">
+                0%
+              </div>
+            </div>
+
+            <!-- Status Info -->
+            <div class="grid grid-cols-2 gap-2 text-xs text-gray-700">
+              <div><strong>Status:</strong> <span id="task-status" class="text-blue-600">Starting...</span></div>
+              <div><strong>Progress:</strong> <span id="task-progress">0 / 0 files</span></div>
+              <div><strong>Current File:</strong> <span id="current-file" class="text-gray-500 truncate block">—</span>
+              </div>
+              <div><strong>Duration:</strong> <span id="task-duration">0.0s</span></div>
+              <div class="col-span-2"><strong>ETA:</strong> <span id="task-eta"
+                  class="text-green-600">calculating...</span></div>
+            </div>
+
+            <!-- Task ID (for debugging) -->
+            <div class="mt-2 text-xs text-gray-400">
+              Task ID: <code id="task-id-display" class="bg-gray-100 px-1 rounded">—</code>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-3 mb-4">
             <div class="flex items-center gap-3">
               <label class="w-40 text-sm text-gray-700 font-medium">Folder Output</label>
@@ -238,10 +275,27 @@
               Hapus baris kosong dari Output
             </label>
           </div>
+
+          <!-- Extraction Mode Toggle -->
+          <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+            <input id="use-async-extraction" type="checkbox" class="form-checkbox text-blue-500 rounded" checked>
+            <label for="use-async-extraction" class="text-sm text-gray-700 font-medium">
+              🚀 Gunakan Async Extraction (dengan Progress Bar)
+            </label>
+            <span class="ml-auto text-xs text-gray-500">💡 Uncheck jika ada masalah</span>
+          </div>
+
           <button id="run-text-extractor-btn"
             class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
             Jalankan TextEXtractor.py
           </button>
+
+          <!-- Open Output Folder Button -->
+          <button id="open-output-folder-btn"
+            class="w-full mt-3 btn-secondary text-gray-700 font-medium py-2 px-4 rounded-md border hover:bg-gray-50 transition-colors">
+            📂 Buka Folder Output Directory
+          </button>
+
           <div class="mt-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-2">
               Output: <span id="output-metrics" class="text-sm text-gray-500">(—)</span>
@@ -262,9 +316,15 @@
             class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Simpan</button>
         </div>
         <div id="just-me-tab" class="tab-content hidden">
-          <p class="text-sm text-gray-600 mb-4">
-            Daftar <strong>whitelist</strong>. Hanya item yang cocok salah satu baris di sini yang akan diproses.
-            Kosongkan untuk mematikan whitelist dan kembali ke mode normal.
+          <p class="text-sm text-gray-600 mb-2">
+            <strong>Just Me (Inclusion Filter):</strong> Hanya file/folder yang cocok dengan pattern di bawah yang akan
+            di-extract.
+          </p>
+          <p class="text-xs text-gray-500 mb-4">
+            💡 <strong>Tips:</strong> Tambahkan nama file (e.g., <code>app.py</code>, <code>UserController.js</code>)
+            atau path folder (e.g., <code>src/</code>, <code>components/</code>).
+            Kosongkan untuk memproses semua file (subject to exclusions).
+            Supports nested files – all subdirectories akan di-scan untuk mencari file yang match.
           </p>
 
           <textarea id="just-me-textarea"
@@ -312,6 +372,163 @@
       const metricsBadge = document.getElementById('output-metrics');
       const justMeTextarea = document.getElementById('just-me-textarea');
       const saveJustMeBtn = document.getElementById('save-just-me-btn');
+      const openOutputFolderBtn = document.getElementById('open-output-folder-btn');
+      const useAsyncExtractionCheckbox = document.getElementById('use-async-extraction');
+
+      // ===== PROGRESS BAR ELEMENTS =====
+      const progressContainer = document.getElementById('progress-container');
+      const progressBar = document.getElementById('progress-bar');
+      const taskStatus = document.getElementById('task-status');
+      const taskProgress = document.getElementById('task-progress');
+      const currentFileSpan = document.getElementById('current-file');
+      const taskDuration = document.getElementById('task-duration');
+      const taskEta = document.getElementById('task-eta');
+      const taskIdDisplay = document.getElementById('task-id-display');
+      const cancelTaskBtn = document.getElementById('cancel-task-btn');
+
+      let currentTaskId = null;
+      let progressPollInterval = null;
+
+      // ===== PROGRESS TRACKING FUNCTIONS =====
+      const showProgressBar = (taskId) => {
+        currentTaskId = taskId;
+        taskIdDisplay.textContent = taskId;
+        progressContainer.classList.remove('hidden');
+        resetProgressUI();
+        startProgressPolling();
+      };
+
+      const hideProgressBar = () => {
+        progressContainer.classList.add('hidden');
+        stopProgressPolling();
+        currentTaskId = null;
+      };
+
+      const resetProgressUI = () => {
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        taskStatus.textContent = 'Starting...';
+        taskProgress.textContent = '0 / 0 files';
+        currentFileSpan.textContent = '—';
+        taskDuration.textContent = '0.0s';
+        taskEta.textContent = 'calculating...';
+      };
+
+      const updateProgressUI = (data) => {
+        const progress = Math.round(data.progress || 0);
+        progressBar.style.width = `${progress}%`;
+        progressBar.textContent = `${progress}%`;
+
+        taskStatus.textContent = data.status || 'running';
+        taskStatus.className = data.status === 'completed' ? 'text-green-600' :
+          data.status === 'failed' ? 'text-red-600' :
+            data.status === 'cancelled' ? 'text-gray-600' : 'text-blue-600';
+
+        const processed = data.processed_files || 0;
+        const total = data.total_files || 0;
+        taskProgress.textContent = `${processed} / ${total} files`;
+
+        currentFileSpan.textContent = data.current_file || '—';
+        currentFileSpan.title = data.current_file || ''; // Full path on hover
+
+        const duration = data.duration || 0;
+        taskDuration.textContent = duration.toFixed(1) + 's';
+
+        taskEta.textContent = data.eta || 'calculating...';
+
+        // Auto-hide pada completion
+        if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+          setTimeout(() => {
+            if (data.status === 'completed') {
+              appendLog(`✅ Extraction completed! ${processed} files in ${duration.toFixed(1)}s`, 'success');
+            } else if (data.status === 'failed') {
+              appendLog(`❌ Extraction failed: ${data.error || 'unknown error'}`, 'error');
+            } else if (data.status === 'cancelled') {
+              appendLog(`⚠️ Extraction cancelled by user`, 'info');
+            }
+            hideProgressBar();
+          }, 3000); // Hide after 3 seconds
+        }
+      };
+
+      const startProgressPolling = () => {
+        if (!currentTaskId) return;
+
+        progressPollInterval = setInterval(async () => {
+          if (!currentTaskId) {
+            stopProgressPolling();
+            return;
+          }
+
+          try {
+            const res = await fetch(`/tasks/task_status/${currentTaskId}`);
+            const data = await res.json();
+
+            if (res.ok && data && data.success) {
+              // API returns { success: true, task_info: {...} }
+              const taskInfo = data.task_info || data;
+              updateProgressUI(taskInfo);
+
+              // Stop polling jika sudah selesai
+              if (['completed', 'failed', 'cancelled'].includes(taskInfo.status)) {
+                stopProgressPolling();
+
+                // Refresh output jika completed
+                if (taskInfo.status === 'completed') {
+                  // Fetch result from task_result endpoint
+                  try {
+                    const resultRes = await fetch(`/tasks/task_result/${currentTaskId}`);
+                    if (resultRes.ok) {
+                      const resultText = await resultRes.text();
+                      outputDisplay.textContent = resultText || 'Extraction completed!';
+                      await refreshOutputMetrics();
+                    }
+                  } catch (e) {
+                    console.error('Failed to load task result:', e);
+                  }
+                }
+              }
+            } else {
+              appendLog(`⚠️ Failed to get task status: ${data?.error || 'unknown'}`, 'error');
+              stopProgressPolling();
+              hideProgressBar();
+            }
+          } catch (e) {
+            console.error('Progress polling error:', e);
+            stopProgressPolling();
+            hideProgressBar();
+          }
+        }, 1000); // Poll every 1 second
+      };
+
+      const stopProgressPolling = () => {
+        if (progressPollInterval) {
+          clearInterval(progressPollInterval);
+          progressPollInterval = null;
+        }
+      };
+
+      // Cancel task handler
+      cancelTaskBtn.addEventListener('click', async () => {
+        if (!currentTaskId) return;
+
+        cancelTaskBtn.disabled = true;
+        try {
+          const res = await fetch(`/tasks/cancel_task/${currentTaskId}`, { method: 'POST' });
+          const data = await res.json();
+
+          if (res.ok && data.success) {
+            appendLog('🛑 Task cancellation requested', 'info');
+            taskStatus.textContent = 'cancelling...';
+          } else {
+            appendLog(`❌ Failed to cancel: ${data.error || 'unknown'}`, 'error');
+          }
+        } catch (e) {
+          appendLog(`❌ Cancel error: ${e.message}`, 'error');
+        } finally {
+          cancelTaskBtn.disabled = false;
+        }
+      });
 
       // ---- Top nav chips: scroll & set active ----
       const navChips = document.querySelectorAll('.nav-chip');
@@ -448,7 +665,7 @@
         const items = normalizeList(text);
         addToExcludeTextarea(items);
       });
-      
+
       // --- DnD ke JUST_ME ---
       justMeTextarea.addEventListener('dragover', (e) => {
         e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
@@ -799,16 +1016,103 @@
         handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Menjalankan NamesExtractor.py... Mohon tunggu...', payload);
       });
 
-      // TextExtractor (pakai path lama bila sudah ada; kalau kosong server minta pilih)
-      runTextExtractorBtn.addEventListener('click', () => {
+      // TextExtractor (SUPPORTS BOTH: async with progress bar OR sync legacy mode)
+      runTextExtractorBtn.addEventListener('click', async () => {
         const normalizedPath = cleanPath(projectPathInput.value);
-        const payload = {
-          ...(normalizedPath ? { path: normalizedPath } : {}),
-          ...(outputDirInput.value ? { output_dir: cleanPath(outputDirInput.value) } : {}),
-          ...(outputNameInput.value ? { output_name: outputNameInput.value.trim() } : {}),
-          remove_blank_lines: !!removeBlankLinesCheckbox?.checked
-        };
-        handleButtonClick('/run_textextractor', runTextExtractorBtn, 'Menjalankan TextEXtractor.py... Mohon tunggu...', payload);
+        const useAsync = useAsyncExtractionCheckbox.checked;
+
+        // Validate inputs
+        if (!normalizedPath) {
+          statusMessage.textContent = '❌ Path project belum diatur!';
+          appendLog('Error: Path project kosong', 'error');
+          return;
+        }
+
+        if (!outputDirInput.value || !outputNameInput.value) {
+          statusMessage.textContent = '❌ Output directory dan filename harus diisi!';
+          appendLog('Error: Output directory atau filename kosong', 'error');
+          return;
+        }
+
+        runTextExtractorBtn.disabled = true;
+
+        // === MODE 1: ASYNC EXTRACTION (NEW) ===
+        if (useAsync) {
+          const payload = {
+            folder_path: normalizedPath,
+            output_dir: cleanPath(outputDirInput.value),
+            output_name: outputNameInput.value.trim(),
+            remove_blank_lines: !!removeBlankLinesCheckbox?.checked
+          };
+
+          statusMessage.textContent = '🚀 Starting async extraction...';
+          appendLog('Starting async text extraction task...', 'info');
+
+          try {
+            const res = await fetch('/tasks/start_extraction', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+              const taskId = data.task_id;
+              statusMessage.textContent = `✅ Task started: ${taskId}`;
+              appendLog(`Async extraction task created: ${taskId}`, 'success');
+
+              // Show progress bar and start polling
+              showProgressBar(taskId);
+            } else {
+              const err = data.error || 'Failed to start extraction';
+              statusMessage.textContent = `❌ ${err}`;
+              appendLog(`Failed to start extraction: ${err}`, 'error');
+            }
+          } catch (e) {
+            statusMessage.textContent = `❌ Network error: ${e.message}`;
+            appendLog(`Network error: ${e.message}`, 'error');
+          } finally {
+            runTextExtractorBtn.disabled = false;
+          }
+        }
+        // === MODE 2: SYNC EXTRACTION (LEGACY - FALLBACK) ===
+        else {
+          const payload = {
+            path: normalizedPath,
+            output_dir: cleanPath(outputDirInput.value),
+            output_name: outputNameInput.value.trim(),
+            remove_blank_lines: !!removeBlankLinesCheckbox?.checked
+          };
+
+          statusMessage.textContent = '⏳ Running sync extraction (legacy mode)...';
+          appendLog('Using sync extraction (old method)...', 'info');
+
+          try {
+            const res = await fetch('/run_textextractor', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'text/plain' },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await res.text();
+
+            if (res.ok) {
+              outputDisplay.textContent = data;
+              statusMessage.textContent = '✅ Sync extraction completed!';
+              appendLog('Sync extraction finished successfully', 'success');
+              await refreshOutputMetrics();
+            } else {
+              statusMessage.textContent = `❌ Error: ${data}`;
+              appendLog(`Sync extraction failed: ${data}`, 'error');
+            }
+          } catch (e) {
+            statusMessage.textContent = `❌ Network error: ${e.message}`;
+            appendLog(`Network error: ${e.message}`, 'error');
+          } finally {
+            runTextExtractorBtn.disabled = false;
+          }
+        }
       });
 
       // Tabs
@@ -916,6 +1220,32 @@
           appendLog(`Terjadi kesalahan jaringan: ${e.message}`, 'error');
         } finally {
           pickOutputDirBtn.disabled = false;
+        }
+      });
+
+      // Open output folder
+      openOutputFolderBtn.addEventListener('click', async () => {
+        openOutputFolderBtn.disabled = true;
+        statusMessage.textContent = 'Membuka folder output...';
+        appendLog('Membuka folder data/output di file explorer...', 'info');
+
+        try {
+          const res = await fetch('/open_output_folder');
+          const data = await res.json();
+
+          if (res.ok && data.success) {
+            statusMessage.textContent = '✅ Folder output dibuka';
+            appendLog(data.message, 'success');
+          } else {
+            const err = data.error || 'Gagal membuka folder.';
+            statusMessage.textContent = `❌ ${err}`;
+            appendLog(`Gagal membuka folder: ${err}`, 'error');
+          }
+        } catch (e) {
+          statusMessage.textContent = `❌ Gagal: ${e.message}`;
+          appendLog(`Terjadi kesalahan: ${e.message}`, 'error');
+        } finally {
+          openOutputFolderBtn.disabled = false;
         }
       });
 
