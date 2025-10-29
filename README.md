@@ -1,148 +1,265 @@
-# 🧭 CodeDevour – Project Viewer & Extractor
+# 🧭 CodeDevour – Intelligent Codebase Bundler & Explorer
 
-**CodeDevour** is a lightweight web tool to **inspect project structure**, **merge text/code files**, and **manage exclusions** in one UI. Perfect for documentation, source analysis, or bundling artifacts for academic and dev use.
-
----
-
-## 🚀 What’s New (October 2025)
-
-> Highlights of **new/changed** features and behavior. Backward‑compatible with previous flows.
-
-* **Smart Output Destination**
-
-  * TextExtractor now **remembers** and **validates** the output destination (`OUTPUT_FILE`).
-  * If not set or unwritable, the UI will **prompt to pick a folder** and **suggest a file name** (e.g., `Output.txt`) before processing.
-  * Related endpoint: `GET /pick_output_folder`; internal guard `_needs_output_destination(...)`.
-
-* **Blank‑Line Cleanup (Post‑processing)**
-
-  * New option **“Remove empty lines from Output”** to clean up `Output.txt` after merging.
-  * Shows a note like `🧹 Blank-line cleaner: 123 empty lines removed.` at the stream header.
-
-* **Output Metrics (Words · Tokens · Lines · Bytes)**
-
-  * UI badges for **word** and **token** counts (uses `tiktoken` if available; otherwise approximate with `chars/4`).
-  * Endpoint: `GET /output_metrics` → `{ words, tokens, lines, chars, bytes }`.
-
-* **NamesExtractor – Fast JSON mode (no intermediate file)**
-
-  * New `POST /run_nameextractor_json` returns an **array of items** `{ path, type, size_bytes?, formatted_size? }`.
-  * The file tree is rendered client‑side and **folder sizes are computed lazily** when expanded (endpoint `GET /size?path=...`).
-
-* **`.gitignore` → `exclude_me.txt` Sync**
-
-  * On **Set Path**, patterns from the project’s `.gitignore` are **copied** into `exclude_me.txt` under the header `# === PATTERNS FROM .gitignore ===`.
-  * Manual patterns remain safe; the `.gitignore` section is **overwritten** on subsequent syncs.
-
-* **Path Normalization & Optional Safety Root**
-
-  * User input paths are cleaned (quotes, duplicate slashes) via `clean_path(...)`.
-  * Optional **ALLOWED_ROOTS** (empty = unrestricted) to limit where scanning can occur.
-
-* **Quick Config Summary**
-
-  * `GET /config_summary` exposes `target_folder`, `output_dir`, `output_name`, `output_file` for UI prefills.
-
-* **A Nicer UI**
-
-  * **Top navigation chips** (NamesExtractor / TextExtractor / Exclude Me / Activity Log).
-  * **Drag & drop** items from the tree into the *Exclude Me* textarea.
-  * **Activity Log** timeline, real‑time output metrics badge, **crimson** theme.
+**CodeDevour** is a powerful web-based tool for **exploring project structure**, **bundling code files**, and **managing file exclusions** through an intuitive interface. Transform any codebase into a single, well-organized document perfect for documentation, code review, AI analysis, or academic purposes.
 
 ---
 
-## 🧰 Stack & Layout
+## ✨ Key Features
 
-| Component | Tech                                             |
-| --------: | :----------------------------------------------- |
-|   Backend | Python 3.x, Flask                                |
-|  Frontend | HTML, JavaScript, TailwindCSS                    |
-|    Config | `config.json`                                    |
-|    Output | Merged file `OUTPUT_FILE` (default `Output.txt`) |
+### 📂 Interactive Project Explorer
+* **Visual file tree** with lazy-loading folder sizes
+* **Drag-and-drop exclusion** – drag files/folders directly into the exclusion list
+* **Real-time activity log** tracking all operations
+* **Native folder picker** for easy path selection
 
-**Directory Skeleton (short)**
+### 📝 Smart Text Bundler
+* **Automatic file merging** with customizable whitelist (30+ file extensions supported)
+* **Binary detection** to skip non-text files automatically
+* **Configurable size limits** (default 10MB per file, adjustable via config)
+* **Blank-line removal** option for cleaner output
+* **Streaming output** for large projects without memory issues
+* **Token counting** with `tiktoken` integration for AI model compatibility
+* **Extracted files list** – automatically generates `OutputExtractedFiles.txt` with list of processed files
+
+### 🎯 Advanced Filtering
+* **Whitelist/Blacklist system** via `exclude_me.txt` and `just_me.txt`
+* **Automatic `.gitignore` sync** – patterns are merged into exclusions
+* **Path-based filtering** for precise control
+* **Smart exclusion matching** by name or relative path
+* **Just Me filtering** – extract only specific files or folders you need
+
+### 📊 Real-Time Metrics
+* **Word count** · **Token count** · **Line count** · **File size**
+* **Lazy folder size calculation** for performance
+* **Live output statistics** updating as files are processed
+
+### 🎨 Modern UI Experience
+* **Tab navigation** (NamesExtractor / TextExtractor / Exclusions / Just Me / Activity Log)
+* **TailwindCSS design** with crimson theme
+* **Responsive layout** for all screen sizes
+* **Native system dialogs** for file operations
+* **Quick folder access** to view extracted files
+
+---
+
+## 🧰 Technology Stack
+
+| Component     | Technology                               |
+| ------------: | :--------------------------------------- |
+| **Backend**   | Python 3.8+, Flask                       |
+| **Frontend**  | HTML5, JavaScript, TailwindCSS           |
+| **Parsing**   | tiktoken (OpenAI tokenizer)              |
+| **Config**    | JSON-based configuration                 |
+| **Output**    | Plain text bundled files                 |
+
+---
+
+## 📦 Project Structure
 
 ```
 codedevour/
-├─ app.py                # Flask app & new REST endpoints
-├─ NamesExtractor.py     # Lister (text & JSON modes)
-├─ TextEXtractor.py      # Merger + whitelist & size limits
-├─ templates/Tree.html   # UI (chips, tabs, DnD exclude, metrics badge)
-├─ exclude_me.txt        # Exclusion list (+ .gitignore sync)
-├─ config.json           # TARGET_FOLDER, OUTPUT_FILE, etc.
-├─ requirements.txt      # Python deps
-└─ README.md
+├── server/
+│   ├── routes/           # API endpoints (text, names, lists, config)
+│   ├── services/         # Business logic (metrics, cleaners, gitignore sync)
+│   ├── extractors/       # Core extraction logic
+│   ├── templates/        # HTML templates
+│   └── app.py           # Flask application entry point
+├── static/              # CSS, JS, and assets
+├── config.json          # Configuration file
+├── exclude_me.txt       # File exclusion list
+├── requirements.txt     # Python dependencies
+└── README.md           # This file
 ```
 
 ---
 
-## 🔧 Installation
+## 🔧 Installation & Setup
 
-### 1) Prereqs
+### Prerequisites
 
-* Python **3.8+** (Windows/Linux/macOS)
+* **Python 3.8 or higher** (Windows, Linux, or macOS)
+* **Git** (optional, for cloning)
 
-### 2) Environment Setup
+### Step 1: Get the Code
 
 ```bash
-# clone & enter folder
+# Clone the repository
 git clone https://github.com/Anwitch/codedevour.git
 cd codedevour
+```
 
-# create & activate venv (Windows)
+Or download the ZIP file from GitHub and extract it.
+
+### Step 2: Create Virtual Environment
+
+**Windows:**
+```bash
+# Create virtual environment
 python -m venv venv
+
+# Activate it
 venv\Scripts\activate
+```
 
-# Linux/macOS
-# python3 -m venv venv
-# source venv/bin/activate
+**Linux/macOS:**
+```bash
+# Create virtual environment
+python3 -m venv venv
 
-# install deps
+# Activate it
+source venv/bin/activate
+```
+
+### Step 3: Install Dependencies
+
+```bash
+# Install required packages
 pip install -r requirements.txt
 ```
 
-### 3) Run
+This will install:
+- Flask (web framework)
+- tiktoken (token counting)
+- Other necessary dependencies
+
+### Step 4: Run the Application
 
 ```bash
-python app.py
-# your browser should open to http://127.0.0.1:5000
+# Double-click or run from terminal
+scripts\run_app.bat
 ```
 
----
+The application will automatically open in your default browser at `http://127.0.0.1:5000`
 
-## 🧑‍💻 Usage
+If it doesn't open automatically, manually navigate to that URL.
 
-### A. Set Project Path
-
-1. Fill **Project Path** then click **Set Path** or **Pick Folder…**.
-2. On Set Path, patterns from `.gitignore` are **merged** into `exclude_me.txt`.
-3. Watch **Activity Log** for status and notifications.
-
-### B. NamesExtractor
-
-* Options: **Include files** and **Include sizes** (optional).
-* Click **Run NamesExtractor.py**:
-
-  * **JSON mode** (default in UI): renders tree directly in the browser.
-  * **Folder sizes** are fetched when you expand a folder (lazy via request).
-
-### C. TextExtractor
-
-1. (Optional) specify **Output Folder** and **File Name**; if left empty you’ll be prompted at runtime.
-2. Check **Remove empty lines** for post‑processing.
-3. Click **Run TextEXtractor.py** to start.
-4. The **Output** streams in the right panel; blank‑line removal stats (if enabled) appear in the header.
-5. The **Output: (words · tokens)** badge refreshes via `GET /output_metrics`.
-
-### D. Exclude Me
-
-* Drag file/folder names from the left tree into this textarea, or edit manually (one item per line).
-* Click **Save** to update `exclude_me.txt`.
-* The section `# === PATTERNS FROM .gitignore ===` is managed automatically on **Set Path**.
+> **Note for Windows users:** The batch script automatically activates your virtual environment and runs the app.
 
 ---
 
-## ⚙️ Configuration (`config.json`)
+## 🎯 How to Use
+
+### Getting Started
+
+1. **Launch the application** by running `scripts\run_app.bat`
+2. **Open your browser** to `http://127.0.0.1:5000`
+3. You'll see four main tabs: **NamesExtractor**, **TextExtractor**, **Exclude Me**, and **Activity Log**
+
+### 1. Set Your Project Path
+
+* **Enter the path** to your project in the "Project Path" field
+* Click **"Pick Folder..."** to use a native folder picker (recommended)
+* Or click **"Set Path"** after typing the path manually
+* The system will automatically sync patterns from `.gitignore` into your exclusion list
+
+### 2. Explore Project Structure (NamesExtractor)
+
+**Purpose:** View your project's file tree with sizes and statistics
+
+1. Navigate to the **NamesExtractor** tab
+2. Choose options:
+   - ☑️ **Include files** – Show individual files (not just folders)
+   - ☑️ **Include sizes** – Display file/folder sizes (calculated lazily)
+3. Click **"Run NamesExtractor.py"**
+4. **Expand folders** to explore – sizes are calculated on-demand
+5. **Drag items** from the tree into the "Exclude Me" tab to exclude them
+
+**Tip:** Folder sizes appear when you expand them, keeping the initial load fast!
+
+### 3. Bundle Your Code (TextExtractor)
+
+**Purpose:** Merge all code files into a single text file
+
+1. Navigate to the **TextExtractor** tab
+2. Configure output:
+   - **Output Folder** – Where to save the bundled file (will prompt if empty)
+   - **File Name** – Name for the output file (default: `Output.txt`)
+3. Options:
+   - ☑️ **Remove empty lines** – Clean up blank lines in the output
+4. Click **"Run TextEXtractor.py"**
+5. Watch the **streaming output** in the right panel
+6. See **real-time metrics** (words · tokens · lines · bytes) in the badge
+
+**What gets bundled?**
+- Text-based files with supported extensions
+- Files under 2MB in size
+- Files not in your exclusion list
+- Non-binary files only
+
+**Supported file types:**
+`.py .js .ts .tsx .jsx .json .md .txt .html .css .yml .yaml .toml .ini .cfg .sql .sh .bat .ps1 .c .cpp .h .hpp .java .kt .go .rs .vue .xml`
+
+### Output Files
+
+When you run TextExtractor, **two files are generated**:
+
+1. **`Output.txt`** (or your custom name)
+   - Location: User-specified output folder (downloaded via browser)
+   - Content: Combined text content of all extracted files
+   - Format: Files separated by `BA` (top border) and `WA` (bottom border) markers
+   - Use: Feed to AI models, documentation, code review
+
+2. **`OutputExtractedFiles.txt`** ✨ **Auto-generated**
+   - Location: `data/output/` in the CodeDevour project directory
+   - Content: List of all files that were successfully extracted
+   - Format: Same as `OutputAllNames.txt` – `path; [FILE]` per line
+   - Use: Quick verification, tracking what was processed, debugging filters
+
+**Why two files?**
+- `Output.txt` is the actual bundled code (can be large, 100MB+)
+- `OutputExtractedFiles.txt` is lightweight metadata for quick reference
+- You can verify extraction results without opening the large output file
+
+### 4. Manage Exclusions (Exclude Me)
+
+**Purpose:** Control which files/folders to skip during bundling
+
+* **View/Edit** the exclusion list in the **Exclude Me** tab
+* **Add items** by:
+  - Dragging from the file tree
+  - Typing names or patterns (one per line)
+* **Save** your changes
+* **Automatic sync** from `.gitignore` when you set a new path
+
+**How exclusions work:**
+- Files/folders are excluded if their **name** or **path** contains any exclusion pattern
+- `.gitignore` patterns are automatically imported under `# === PATTERNS FROM .gitignore ===`
+- Manual patterns are preserved above the `.gitignore` section
+
+### 5. Use Just Me Filter (Optional)
+
+**Purpose:** Extract only specific files or folders instead of everything
+
+* Navigate to the **Just Me** tab (right panel)
+* **Add patterns** for files/folders you want to include:
+  - Filenames: `app.py`, `config.json`, `UserController.js`
+  - Folder paths: `src/`, `components/`, `backend/controllers/`
+  - Patterns work with **nested files** – all subdirectories are scanned
+* **Leave empty** to process all files (default behavior)
+* **Combines with exclusions** – excluded items are still skipped even if in Just Me list
+
+**Example scenarios:**
+- **Focus on authentication code:** Add `auth` to extract all auth-related files
+- **Extract only one file:** Add exact filename like `adminApplicationController.js`
+- **Process specific module:** Add `src/services/` to bundle only service layer
+
+**Tips:**
+- Just Me is **inclusive** – only specified items are processed
+- Use **folder paths** to extract entire directories
+- Drag items from NamesExtractor tree into Just Me tab
+
+### 6. Monitor Activity (Activity Log)
+
+* View **real-time logs** of all operations
+* See **timestamps** for each action
+* Track **errors** and **success messages**
+* Monitor **processing progress**
+
+---
+
+## ⚙️ Configuration
+
+### config.json
 
 ```json
 {
@@ -153,70 +270,185 @@ python app.py
 }
 ```
 
-> `OUTPUT_FILE` can be changed on‑the‑fly from the UI (Output Folder + File Name) and will be **persisted** to `config.json`.
+**Configuration Options:**
 
-**TextExtractor Whitelist & Size Limits** (in `TextEXtractor.py`):
+* `TARGET_FOLDER` – The project directory to analyze
+* `OUTPUT_FILE` – Output file path (can be changed from UI)
+* `NAME_OUTPUT_FILE` – File list output path
+* `EXCLUDE_FILE_PATH` – Path to exclusion list file
+* `JUST_ME_FILE_PATH` – Path to inclusion filter file
+* `MAX_FILE_SIZE_MB` – Maximum file size in MB (default: 10)
 
-* `WHITELIST_EXT`: `.py .js .ts .tsx .jsx .json .md .txt .html .css .yml .yaml .toml .ini .cfg .sql .sh .bat .ps1 .c .cpp .h .hpp .java .kt .go .rs .vue .xml`
-* `MAX_FILE_BYTES`: `2 * 1024 * 1024` (2 MB)
-* Binary detection: sample 4096 bytes / if non‑text chars > ~30% then skip.
+> The `OUTPUT_FILE` can be changed on-the-fly from the UI and will be automatically persisted to `config.json`.
 
-**Exclusion Notes**
+### File Processing Limits
 
-* An item is excluded if its **name** or **relative path** contains any token from `exclude_me.txt` (semi‑substring match).
+* **Maximum file size:** 10 MB per file (configurable via `MAX_FILE_SIZE_MB` in config)
+* **Binary detection:** Files with >30% non-text characters are automatically skipped
+* **Sample size:** 4096 bytes for binary detection
+* **Performance optimizations:** 128KB chunk size for efficient I/O, 2-hour timeout for large projects
+
+### Exclusion Rules
+
+* Items are excluded if their **name** or **relative path** contains any pattern from `exclude_me.txt`
+* Matching is case-sensitive
+* Patterns use substring matching (not regex)
+
+### Just Me (Inclusion) Rules
+
+The **Just Me** filter allows you to extract **only specific files or folders** instead of processing everything:
+
+* Add filenames (e.g., `app.py`, `config.json`) to extract only those files
+* Add folder names (e.g., `src/`, `components/`) to extract entire directories
+* Supports **nested files** – if you specify a filename, all subdirectories are scanned
+* Combines with exclusion rules – excluded items are still skipped
+* Leave empty to process all files (subject to exclusions)
+
+**Example use cases:**
+* Extract only controller files: Add `*Controller.js` patterns
+* Focus on specific module: Add `src/auth/` to process only auth-related code
+* Single file extraction: Add exact filename like `UserModel.py`
 
 ---
 
-## 🔌 Endpoint Cheatsheet
+## 🔌 API Endpoints
 
-| Method | Path                      | Description                                                                                                       |
-| :----: | :------------------------ | :---------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/set_path`               | Set `TARGET_FOLDER` (sync `.gitignore` → `exclude_me.txt`).                                                       |
-|  `GET` | `/pick_folder`            | Native folder picker for the project path.                                                                        |
-|  `GET` | `/pick_output_folder`     | Native folder picker for TextExtractor output.                                                                    |
-|  `GET` | `/config_summary`         | Return active config for UI prefill.                                                                              |
-|  `GET` | `/size?path=…`            | Compute file/folder size (lazy).                                                                                  |
-| `POST` | `/run_nameextractor_json` | Run NamesExtractor → **JSON** array items.                                                                        |
-| `POST` | `/run_nameextractor`      | Legacy mode → writes `OutputAllNames.txt`, returns JSON with `output`.                                            |
-| `POST` | `/run_textextractor`      | Run TextExtractor; **streams** merged output. Auto‑prompts for output dir if needed. Option `remove_blank_lines`. |
-|  `GET` | `/manage_exclude_file`    | (GET) read `exclude_me.txt` content.                                                                              |
-| `POST` | `/manage_exclude_file`    | (POST) save `exclude_me.txt` content.                                                                             |
-|  `GET` | `/output_metrics`         | Output stats: words, tokens, lines, chars, bytes.                                                                 |
+| Method | Path                      | Description                                                      |
+| :----: | :------------------------ | :--------------------------------------------------------------- |
+| `POST` | `/set_path`               | Set project path and sync `.gitignore` patterns                  |
+|  `GET` | `/pick_folder`            | Open native folder picker for project path                       |
+|  `GET` | `/pick_output_folder`     | Open native folder picker for output destination                 |
+|  `GET` | `/config_summary`         | Get current configuration for UI                                 |
+|  `GET` | `/size?path=...`          | Calculate file/folder size (lazy loading)                        |
+| `POST` | `/run_nameextractor_json` | Generate file tree as JSON (fast, no intermediate file)          |
+| `POST` | `/run_nameextractor`      | Legacy mode – writes to `OutputAllNames.txt`                     |
+| `POST` | `/run_textextractor`      | Bundle files with streaming output                               |
+|  `GET` | `/manage_exclude_file`    | Read `exclude_me.txt` content                                    |
+| `POST` | `/manage_exclude_file`    | Save `exclude_me.txt` content                                    |
+|  `GET` | `/manage_just_me`         | Read `just_me.txt` content (inclusion filter)                    |
+| `POST` | `/manage_just_me`         | Save `just_me.txt` content                                       |
+|  `GET` | `/output_metrics`         | Get output statistics (words, tokens, lines, chars, bytes)       |
 
 ---
 
 ## 🐞 Troubleshooting
 
-* **“Path is invalid or not found.”**
-  Use **Pick Folder…** to avoid typos and confirm permissions.
+### Common Issues
 
-* **“Output folder required.”**
-  Choose an output directory when prompted, or fill **Output Folder** & **File Name** in the TextExtractor tab.
+**"Path is invalid or not found"**
+* Use the **"Pick Folder..."** button to avoid typos
+* Ensure you have read permissions for the directory
+* Check that the path exists and is accessible
 
-* **No folder sizes in NamesExtractor**
-  Folder sizes are fetched **on expand**. Check your browser’s Network tab for request errors.
+**"Output folder required"**
+* Specify an output directory in the TextExtractor tab
+* Or let the UI prompt you when running TextExtractor
+* Ensure you have write permissions for the output location
 
-* **Token count looks approximate**
-  Without `tiktoken`, we approximate with `chars/4`. Install `tiktoken` for accurate counts.
+**Folder sizes not appearing in NamesExtractor**
+* Folder sizes are calculated **on-demand** when you expand them
+* Check browser's Network tab for any failed requests to `/size?path=...`
+* Ensure the target folder is accessible
 
-* **Windows: output file appears locked**
-  Close any editor/preview holding `Output.txt`, then rerun TextExtractor.
+**Token count looks approximate**
+* Without `tiktoken` installed, counts are estimated using `chars/4`
+* Install tiktoken for accurate token counting: `pip install tiktoken`
+
+**Windows: Output file appears locked**
+* Close any text editor or application holding `Output.txt`
+* Ensure no other process is accessing the file
+* Try running TextExtractor again
+
+**Large projects taking too long**
+* Use the exclusion list to filter out unnecessary directories (e.g., `node_modules`, `.git`)
+* Enable `.gitignore` sync to automatically exclude common patterns
+* Consider processing subdirectories separately
+
+---
+
+## 💡 Use Cases
+
+### For Developers
+* **Code review** – Bundle entire features for review
+* **Documentation** – Generate snapshots of codebase state
+* **Backup** – Create portable text versions of projects
+* **Refactoring** – Analyze project structure before major changes
+
+### For AI/ML Engineers
+* **Model training** – Prepare code datasets
+* **Token counting** – Calculate context window requirements
+* **Code analysis** – Feed codebases to LLMs for analysis
+
+### For Students & Academics
+* **Assignment submission** – Bundle projects in readable format
+* **Project documentation** – Generate comprehensive project overviews
+* **Code study** – Create study materials from open-source projects
+
+### For Teams
+* **Knowledge sharing** – Share project structure with new team members
+* **Onboarding** – Provide comprehensive project overviews
+* **Audit trails** – Snapshot codebases at specific points in time
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/your-feature`
-3. Commit & push
-4. Open a Pull Request 🎉
+We welcome contributions! Here's how you can help:
+
+1. **Fork the repository**
+2. **Create a feature branch:** `git checkout -b feature/your-feature`
+3. **Make your changes** and test thoroughly
+4. **Commit your changes:** `git commit -m "Add your feature"`
+5. **Push to your fork:** `git push origin feature/your-feature`
+6. **Open a Pull Request** with a clear description
+
+### Development Setup
+
+```bash
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/codedevour.git
+cd codedevour
+
+# Set up virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/macOS
+
+# Install in development mode
+pip install -r requirements.txt
+pip install -e .
+
+# Run tests (if available)
+python -m pytest
+
+# Start development server
+scripts\run_app.bat
+```
 
 ---
 
 ## 📜 License
 
-MIT License. See `LICENSE`.
+MIT License – See `LICENSE` file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+* Built with [Flask](https://flask.palletsprojects.com/)
+* Styled with [TailwindCSS](https://tailwindcss.com/)
+* Token counting powered by [tiktoken](https://github.com/openai/tiktoken)
+
+---
+
+## 📞 Support
+
+* **Issues:** [GitHub Issues](https://github.com/Anwitch/codedevour/issues)
+* **Discussions:** [GitHub Discussions](https://github.com/Anwitch/codedevour/discussions)
+* **Author:** [@Anwitch](https://github.com/Anwitch)
 
 ---
 
 Made with ❤️ by **Anwitch** · *CodeDevour*
+
+**Star this repo if you find it useful!** ⭐
