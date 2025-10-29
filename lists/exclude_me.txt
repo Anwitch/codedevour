@@ -6,19 +6,17 @@ LogoCodeDevour.png
 .venv
 run_app.bat
 LICENSE
-node_modules
-
-
-
-
-
-
-
-
-
-
-
-
+# Node.js dependencies (VERY IMPORTANT - Massive performance impact!)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+# Build outputs
+dist
+build
+.next
+.nuxt
+.output
+.cache
 # === POLA DARI .gitignore ===
 # Pola di bawah ini otomatis disinkronkan saat Set Path.
 /.pnp
@@ -31,7 +29,6 @@ node_modules
 /coverage
 /.next/
 .out/
-.next
 /build
 .DS_Store
 *.pem
@@ -49,3 +46,4 @@ firebase-debug.log
 firestore-debug.log
 /MinIO/
 /generated/prisma
+docs

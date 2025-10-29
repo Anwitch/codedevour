@@ -1,6 +1,5 @@
 __pycache__/
 .venv/
-Output.txt
-OutputAllNames.txt
+OutputExtractedFiles.txt
 config.json
 LogoCodeDevour.png
