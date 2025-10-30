@@ -4,9 +4,10 @@ Task Routes untuk Async Processing
 
 from __future__ import annotations
 
+import os
 import threading
 import time
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 
 from server.config import clean_path, get_config
 from server.services.task_manager import task_manager, TaskInfo
@@ -26,6 +27,7 @@ def run_text_extraction_task(task_info: TaskInfo):
         output_file = task_info.params.get("output_file", "Output.txt")
         exclude_file = config.get("EXCLUDE_FILE_PATH")
         formatted_output = task_info.params.get("formatted_output", True)
+        remove_blank_lines = task_info.params.get("remove_blank_lines", False)
         
         # Update initial progress
         task_info.update_progress(1, "Initializing...")
@@ -40,6 +42,22 @@ def run_text_extraction_task(task_info: TaskInfo):
         )
         
         if result["success"]:
+            # Handle blank line removal like sync version
+            if remove_blank_lines:
+                try:
+                    from server.services.cleaners import remove_blank_lines_inplace
+                    success, info = remove_blank_lines_inplace(output_file)
+                    if success:
+                        removed = info if isinstance(info, int) else 0
+                        print(f"Blank-line cleaner: {removed} baris kosong dihapus.")
+                        result["blank_lines_removed"] = removed
+                    else:
+                        print(f"Blank-line cleaner gagal: {info}")
+                        result["blank_lines_error"] = str(info)
+                except Exception as e:
+                    print(f"Error in blank line removal: {e}")
+                    result["blank_lines_error"] = str(e)
+            
             task_info.complete({
                 "result": result,
                 "message": f"Successfully processed {result['stats']['processed_files']} files"
@@ -205,7 +223,7 @@ def cleanup_tasks():
 
 @task_bp.route("/task_result/<task_id>", methods=["GET"])
 def get_task_result(task_id):
-    """Get task result (for completed tasks)"""
+    """Get task result (for completed tasks) with streaming support"""
     try:
         task_info = task_manager.get_task(task_id)
         if not task_info:
@@ -220,23 +238,41 @@ def get_task_result(task_id):
                 "error": f"Task not completed yet, status: {task_info.status}"
             }), 400
         
-        # Read output file if it exists
         output_file = task_info.params.get("output_file", "Output.txt")
-        output_content = ""
+        download = request.args.get("download", "false").lower() == "true"
         
+        if not os.path.exists(output_file):
+            return jsonify({
+                "success": False,
+                "error": f"Output file not found: {output_file}"
+            }), 404
+        
+        # If download=true, stream the file content directly like sync version
+        if download:
+            def generate_stream():
+                # Same chunk size as sync version (128KB)
+                try:
+                    with open(output_file, "r", encoding="utf-8", errors="ignore") as handle:
+                        for chunk in iter(lambda: handle.read(131072), ""):  # 128KB chunks
+                            yield chunk
+                except Exception as e:
+                    yield f"Error reading file: {str(e)}\n"
+            
+            return Response(generate_stream(), mimetype="text/plain; charset=utf-8")
+        
+        # Otherwise, return metadata and file info (for progress tracking)
         try:
-            with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
-                output_content = f.read()
+            file_size = os.path.getsize(output_file)
         except Exception:
-            # File might not exist or couldn't be read
-            pass
+            file_size = 0
         
         return jsonify({
             "success": True,
             "result": {
                 "task_info": task_info.to_dict(),
-                "output_content": output_content,
-                "output_file": output_file
+                "output_file": output_file,
+                "file_size": file_size,
+                "download_url": f"/task_result/{task_id}?download=true"
             }
         })
         
@@ -245,3 +281,9 @@ def get_task_result(task_id):
             "success": False,
             "error": str(exc)
         }), 500
+
+
+@task_bp.route("/task_result/<task_id>/download", methods=["GET"])
+def download_task_result(task_id):
+    """Direct download endpoint for task result (alias for download=true)"""
+    return get_task_result(task_id)

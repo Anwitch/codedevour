@@ -159,11 +159,17 @@ def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], b
     Tentukan apakah direktori harus di-keep berdasarkan just_me list.
     Sekarang mendukung path lengkap.
     
+    CRITICAL: EXCLUDE SELALU MENANG!
+    - Jika direktori di-exclude, return False meskipun ada di just_me
+    - Jika just_set kosong, return True (keep all except excluded)
+    - Jika ada just_set, hanya keep jika match dengan patterns
+    
     **IMPORTANT:** Jika just_set hanya berisi filenames (bukan folder paths),
     maka SEMUA directories harus di-keep agar bisa scan nested files.
     """
-    if not just_set:
-        return True
+    # CRITICAL: Cek exclude DULU - EXCLUDE SELALU MENANG!
+    if is_excluded(os.path.dirname(root_path), os.path.basename(root_path), exclude_set, base_folder):
+        return False
     
     # Buat relative path jika base folder ada
     if base_folder:
@@ -173,6 +179,10 @@ def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], b
             rel_path = root_path.replace("\\", "/")
     else:
         rel_path = root_path.replace("\\", "/")
+    
+    # Jika just_set kosong, return True (keep all dirs except excluded)
+    if not just_set:
+        return True
     
     # Cek apakah ada pattern yang match
     for pattern in just_set:
@@ -193,7 +203,7 @@ def dir_should_keep(root_path: str, just_set: set[str], exclude_set: set[str], b
         if pattern == os.path.basename(root_path):
             return True
         
-        # **NEW:** Jika pattern adalah filename (tidak ada / atau \), 
+        # **NEW:** Jika pattern adalah filename (tidak ada / atau \),
         # keep directory untuk scan nested files
         if "/" not in pattern and "\\" not in pattern:
             # Pattern adalah filename, bukan path

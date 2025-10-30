@@ -63,6 +63,10 @@
                 <button class="visualizer-btn visualizer-btn-secondary" id="refresh-btn" style="display: none;">
                     🔄 Refresh
                 </button>
+
+                <button class="visualizer-btn visualizer-btn-secondary" id="clear-cache-btn" style="display: none;">
+                    🗑️ Clear Cache
+                </button>
             </div>
         </div>
 
@@ -82,7 +86,7 @@
             <!-- Graph Controls -->
             <div class="graph-controls">
                 <button class="graph-control-btn" id="reset-view-btn" title="Reset View">
-                    🏠
+                    ↻
                 </button>
                 <button class="graph-control-btn" id="export-svg-btn" title="Export SVG">
                     💾
@@ -130,10 +134,13 @@
         let filterPanel;
         let currentProjectPath = '';
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initializeComponents();
             attachEventListeners();
-            loadProjectPath();
+            await loadProjectPath();
+            
+            // Auto-scan if project path is available
+            setTimeout(autoScanIfPossible, 500);
         });
 
         function initializeComponents() {
@@ -166,6 +173,9 @@
                 scanProject(true);
             });
 
+            // Clear cache button
+            document.getElementById('clear-cache-btn').addEventListener('click', clearCache);
+
             // Reset view button
             document.getElementById('reset-view-btn').addEventListener('click', () => {
                 bubbleGraph.resetView();
@@ -184,14 +194,26 @@
             try {
                 const response = await fetch('/config_summary');
                 const data = await response.json();
-                currentProjectPath = data.TARGET_FOLDER || '';
+                currentProjectPath = data.target_folder || '';
+                
+                // Debug logging
+                console.log('Config loaded:', {
+                    success: data.success,
+                    target_folder: data.target_folder,
+                    exclude_file: data.exclude_file,
+                    just_me_file: data.just_me_file
+                });
+                
+                if (!currentProjectPath) {
+                    console.warn('No project path found in config');
+                }
             } catch (error) {
                 console.error('Failed to load project path:', error);
             }
         }
 
         async function scanProject(forceRefresh = false) {
-            showLoading('Scanning project...');
+            showLoading('Scanning project with filters...');
 
             try {
                 // Step 1: Scan project
@@ -203,7 +225,8 @@
                     body: JSON.stringify({
                         project_path: currentProjectPath,
                         use_cache: !forceRefresh,
-                        include_tests: false
+                        include_tests: false,
+                        force_refresh: forceRefresh
                     })
                 });
 
@@ -213,8 +236,13 @@
                     throw new Error(scanData.message || 'Scan failed');
                 }
 
-                // Update stats
+                // Update stats with filtering info
                 updateStats(scanData);
+
+                // Show filtering information if available
+                if (scanData.filters_applied) {
+                    console.log('Filters applied:', scanData.filters_applied);
+                }
 
                 // Step 2: Get graph data
                 showLoading('Building graph...');
@@ -228,11 +256,56 @@
                 // Show success
                 hideLoading();
                 document.getElementById('refresh-btn').style.display = 'inline-block';
+                document.getElementById('clear-cache-btn').style.display = 'inline-block';
 
             } catch (error) {
                 console.error('Scan failed:', error);
                 alert('Failed to scan project: ' + error.message);
                 hideLoading();
+            }
+        }
+
+        async function clearCache() {
+            try {
+                showLoading('Clearing cache...');
+                
+                const response = await fetch('/api/visualizer/cache/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_path: currentProjectPath
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('Cache cleared successfully!');
+                    hideLoading();
+                    
+                    // Trigger a fresh scan
+                    scanProject(true);
+                } else {
+                    throw new Error(result.message || 'Failed to clear cache');
+                }
+                
+            } catch (error) {
+                console.error('Clear cache failed:', error);
+                alert('Failed to clear cache: ' + error.message);
+                hideLoading();
+            }
+        }
+
+        // Auto-scan when page loads if project path is available
+        async function autoScanIfPossible() {
+            if (currentProjectPath && currentProjectPath.trim()) {
+                console.log('Auto-scanning project:', currentProjectPath);
+                await scanProject(true); // Force refresh to get latest data
+            } else {
+                console.log('No project path available, waiting for user input');
+                showLoading('No project path set. Please configure in the main app.');
             }
         }
 

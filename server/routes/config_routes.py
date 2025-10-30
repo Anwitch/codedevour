@@ -112,6 +112,9 @@ def config_summary():
         config = get_config()
         output_path = (config.get("OUTPUT_FILE") or "").strip()
         target_folder = (config.get("TARGET_FOLDER") or "").strip()
+        exclude_file = (config.get("EXCLUDE_FILE_PATH") or "").strip()
+        just_me_file = (config.get("JUST_ME_FILE_PATH") or "").strip()
+        
         return jsonify(
             {
                 "success": True,
@@ -119,6 +122,8 @@ def config_summary():
                 "output_file": output_path,
                 "output_dir": os.path.dirname(output_path) if output_path else "",
                 "output_name": os.path.basename(output_path) if output_path else "",
+                "exclude_file": exclude_file,
+                "just_me_file": just_me_file
             }
         )
     except Exception as exc:

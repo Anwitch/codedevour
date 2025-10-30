@@ -226,7 +226,7 @@ def add_files_to_list(
             all_items.append({"path": file_path, "type": "FILE"})
 
 
-def list_all_names(folder_path: str, include_files: bool = True, include_size: bool = False, exclude_file: str | None = None) -> list[dict]:
+def list_all_names(folder_path: str, include_files: bool = True, include_size: bool = False, exclude_file: str | None = None, just_file_path: str | None = None) -> list[dict]:
     if not os.path.isdir(folder_path):
         log(f"[!] Error: Folder '{folder_path}' tidak ditemukan atau bukan direktori.")
         return []
@@ -235,24 +235,27 @@ def list_all_names(folder_path: str, include_files: bool = True, include_size: b
     exclude_names = read_exclude_file(exclude_file) if exclude_file else []
     exclude_set = set(exclude_names)
 
-    just_me_path = config_data.get("JUST_ME_FILE_PATH")
+    # Use custom just_file_path if provided, otherwise use config
+    just_me_path = just_file_path or config_data.get("JUST_ME_FILE_PATH")
     just_set = set(read_list_file(just_me_path) if just_me_path else [])
 
     # Base folder untuk relative path calculation
     base_folder = os.path.abspath(folder_path)
 
     log(f"-> Memulai penelusuran dari direktori: {folder_path}")
+    log(f"-> Exclude patterns: {len(exclude_set)} patterns")
+    log(f"-> Just me patterns: {len(just_set)} patterns" if just_set else "-> No just_me filtering")
 
     for root, dirs, files in os.walk(folder_path):
-        # Filter direktori yang di-exclude
+        # Filter direktori yang di-exclude - CRITICAL: Must happen first!
         dirs[:] = [
-            d for d in dirs 
+            d for d in dirs
             if not is_excluded_path(root, d, exclude_set, base_folder)
         ]
 
         # Jika just_set ada, filter direktori berdasarkan just_set juga
         if just_set:
-            # Cek apakah ada child yang match dengan just_set
+            # Cek apakah ada child yang match dengan just_set (dan TIDAK di-exclude)
             def has_matching_child() -> bool:
                 # Cek direktori
                 for directory in dirs:
@@ -260,10 +263,11 @@ def list_all_names(folder_path: str, include_files: bool = True, include_size: b
                     if matches_just_pattern(dir_path, directory, just_set, base_folder):
                         return True
                 
-                # Cek files
+                # Cek files (tapi pastikan file tidak di-exclude)
                 for filename in files:
                     file_path = os.path.join(root, filename)
-                    if matches_just_pattern(file_path, filename, just_set, base_folder):
+                    if (not is_excluded_path(root, filename, exclude_set, base_folder) and
+                        matches_just_pattern(file_path, filename, just_set, base_folder)):
                         return True
                 
                 return False

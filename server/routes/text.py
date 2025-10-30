@@ -207,7 +207,8 @@ def run_extractor_async():
             "task_id": task_info.task_id,
             "message": "Async text extraction started",
             "status_endpoint": f"/task_status/{task_info.task_id}",
-            "result_endpoint": f"/task_result/{task_info.task_id}"
+            "result_endpoint": f"/task_result/{task_info.task_id}",
+            "download_endpoint": f"/task_result/{task_info.task_id}?download=true"
         })
 
     except Exception as exc:

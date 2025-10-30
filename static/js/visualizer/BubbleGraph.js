@@ -26,6 +26,9 @@ class BubbleGraph {
         // D3 force simulation
         this.simulation = null;
 
+        // D3 zoom behavior
+        this.zoom = null;
+
         // Graph data
         this.nodes = [];
         this.edges = [];
@@ -60,13 +63,13 @@ class BubbleGraph {
             .attr('viewBox', `0 0 ${this.width} ${this.height}`);
 
         // Add zoom behavior
-        const zoom = d3.zoom()
+        this.zoom = d3.zoom()
             .scaleExtent([0.1, 4])
             .on('zoom', (event) => {
                 this.g.attr('transform', event.transform);
             });
 
-        this.svg.call(zoom);
+        this.svg.call(this.zoom);
 
         // Main group for all graph elements
         this.g = this.svg.append('g');
@@ -370,7 +373,7 @@ class BubbleGraph {
             .transition()
             .duration(750)
             .call(
-                d3.zoom().transform,
+                this.zoom.transform,
                 d3.zoomIdentity
             );
 

@@ -154,6 +154,9 @@
         <button class="nav-chip" data-target="#exclude-me-tab">Exclude Me</button>
         <button class="nav-chip" data-target="#just-me-tab">Just Me</button>
         <button class="nav-chip" data-target="#status-panel">Activity Log</button>
+        <a href="/visualizer" target="_blank" class="nav-chip" style="text-decoration: none;">
+          🔍 Code Explorer
+        </a>
       </div>
     </div>
   </div>
@@ -285,10 +288,26 @@
             <span class="ml-auto text-xs text-gray-500">💡 Uncheck jika ada masalah</span>
           </div>
 
-          <button id="run-text-extractor-btn"
-            class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
-            Jalankan TextEXtractor.py
-          </button>
+          <!-- Auto Visualizer Toggle -->
+          <div class="flex items-center gap-3 mb-4 p-3 bg-purple-50 rounded-md border border-purple-200">
+            <input id="auto-visualize" type="checkbox" class="form-checkbox text-purple-500 rounded">
+            <label for="auto-visualize" class="text-sm text-gray-700 font-medium">
+              📊 Auto-open Visualizer after extraction
+            </label>
+            <span class="ml-auto text-xs text-gray-500">🆕 New feature!</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <button id="run-text-extractor-btn"
+              class="btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
+              Jalankan TextEXtractor.py
+            </button>
+
+            <button id="open-visualizer-btn"
+              class="btn-secondary text-gray-700 font-medium py-2 px-4 rounded-md border hover:bg-gray-50 transition-colors">
+              🔍 Open Code Explorer
+            </button>
+          </div>
 
           <!-- Open Output Folder Button -->
           <button id="open-output-folder-btn"
@@ -374,6 +393,8 @@
       const saveJustMeBtn = document.getElementById('save-just-me-btn');
       const openOutputFolderBtn = document.getElementById('open-output-folder-btn');
       const useAsyncExtractionCheckbox = document.getElementById('use-async-extraction');
+      const autoVisualizeCheckbox = document.getElementById('auto-visualize');
+      const openVisualizerBtn = document.getElementById('open-visualizer-btn');
 
       // ===== PROGRESS BAR ELEMENTS =====
       const progressContainer = document.getElementById('progress-container');
@@ -475,13 +496,21 @@
 
                 // Refresh output jika completed
                 if (taskInfo.status === 'completed') {
-                  // Fetch result from task_result endpoint
+                  // Fetch result from task_result endpoint (streaming mode)
                   try {
-                    const resultRes = await fetch(`/tasks/task_result/${currentTaskId}`);
+                    const resultRes = await fetch(`/tasks/task_result/${currentTaskId}?download=true`);
                     if (resultRes.ok) {
                       const resultText = await resultRes.text();
                       outputDisplay.textContent = resultText || 'Extraction completed!';
                       await refreshOutputMetrics();
+
+                      // NEW: Auto-open visualizer if checked
+                      if (autoVisualizeCheckbox.checked) {
+                        appendLog('📊 Automatically opening Code Explorer...', 'info');
+                        setTimeout(() => {
+                          window.open('/visualizer', '_blank');
+                        }, 1000);
+                      }
                     }
                   } catch (e) {
                     console.error('Failed to load task result:', e);
@@ -1247,6 +1276,12 @@
         } finally {
           openOutputFolderBtn.disabled = false;
         }
+      });
+
+      // Open Visualizer button
+      openVisualizerBtn.addEventListener('click', () => {
+        appendLog('🔍 Opening Code Explorer in a new tab...', 'info');
+        window.open('/visualizer', '_blank');
       });
 
       // panggil metrics terakhir setelah semua binding siap
