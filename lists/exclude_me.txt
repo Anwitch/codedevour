@@ -31,3 +31,15 @@ __pycache__/
 OutputExtractedFiles.txt
 config.json
 venv
+.idx
+.modified
+CHANGELOG.md
+README.md
+docker-compose.yml
+docs
+invalid-students.xlsx
+package.json
+sample-students.xlsx
+.env
+.env.example
+database

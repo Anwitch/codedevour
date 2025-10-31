@@ -11,7 +11,8 @@ REST API endpoints for code visualization:
 """
 
 import os
-from flask import Blueprint, request, jsonify, render_template
+import json
+from flask import Blueprint, request, jsonify, render_template, current_app
 from server.config import load_config, get_config
 from server.visualizer import CodeParser, DependencyAnalyzer, CacheManager
 
@@ -135,7 +136,7 @@ def scan_project():
         start_time = time.time()
         
         parsed_files = {}
-        analyzer = DependencyAnalyzer(project_path)
+        analyzer = DependencyAnalyzer(project_path, alias_config=current_app.config.get('ALIAS_CONFIG', {}))
         total_files_scanned = 0
         
         # Get the filtering functions from the text extractors
@@ -143,7 +144,7 @@ def scan_project():
         
         base_folder = project_path
         
-        # Scan all Python files
+        # Scan all supported file types with enhanced technology detection
         for root, dirs, files in os.walk(project_path):
             total_files_scanned += len(files)
             
@@ -162,9 +163,13 @@ def scan_project():
             if not include_tests:
                 dirs[:] = [d for d in dirs if d not in ['tests', 'test']]
             
-            # Process files
+            # Process files with enhanced technology detection
             for file in files:
-                if not file.endswith('.py'):
+                # Determine file type and technology stack
+                file_ext = os.path.splitext(file)[1].lower()
+                
+                # Skip non-source files (now supporting multiple technologies)
+                if file_ext not in ['.py', '.js', '.ts', '.tsx', '.jsx', '.css', '.scss', '.sass', '.less', '.html', '.vue', '.json']:
                     continue
                     
                 filepath = os.path.join(root, file)
@@ -182,7 +187,8 @@ def scan_project():
                     try:
                         rel_path = os.path.relpath(filepath, base_folder).replace("\\", "/")
                     except ValueError:
-                        rel_path = filepath.replace("\\", "/")
+                        # Handle cases where filepath is on a different drive
+                        rel_path = os.path.abspath(filepath).replace("\\", "/")
                     
                     for pattern in just_me_patterns:
                         pattern_norm = pattern.replace("\\", "/")
@@ -205,27 +211,38 @@ def scan_project():
                     if not file_matches:
                         continue
                 
-                # Parse file
+                # Enhanced technology detection
+                technology = _detect_technology(filepath, root)
+                
+                # Parse file using the updated CodeParser
                 try:
                     parsed = parser.parse_file(filepath)
-                    
                     if parsed:
-                        # Add modification time for cache invalidation
+                        parsed['technology'] = technology
                         parsed['_mtime'] = os.path.getmtime(filepath)
-                        
                         parsed_files[filepath] = parsed
                         analyzer.add_parsed_file(parsed)
                 except Exception as e:
-                    print(f"Warning: Could not parse {filepath}: {e}")
+                    print(f"Warning: Could not parse {filepath}: {repr(e)}")
                     continue
         
         # Build graphs
         file_graph = analyzer.build_file_graph()
         function_graph = analyzer.build_function_graph()
         
+        # Debug: Log edge counts
+        print(f"DEBUG: File graph - {len(file_graph['nodes'])} nodes, {len(file_graph['edges'])} edges")
+        print(f"DEBUG: Function graph - {len(function_graph['nodes'])} nodes, {len(function_graph['edges'])} edges")
+        
+        # Sample edges for debugging
+        if file_graph['edges']:
+            print(f"DEBUG: Sample file edge: {file_graph['edges'][0]}")
+        if function_graph['edges']:
+            print(f"DEBUG: Sample function edge: {function_graph['edges'][0]}")
+        
         # Calculate stats
-        total_functions = sum(len(data['functions']) for data in parsed_files.values())
-        total_classes = sum(len(data['classes']) for data in parsed_files.values())
+        total_functions = sum(len(data.get('functions', [])) for data in parsed_files.values())
+        total_classes = sum(len(data.get('classes', [])) for data in parsed_files.values())
         
         scan_time = time.time() - start_time
         
@@ -233,9 +250,17 @@ def scan_project():
         exclude_hash = str(hash(frozenset(exclude_patterns)))
         just_me_hash = str(hash(frozenset(just_me_patterns)))
         
+        # Combine both graphs for storage
+        combined_graph = {
+            'file_graph': file_graph,
+            'function_graph': function_graph,
+            'nodes': file_graph['nodes'],  # Default to file-level view
+            'edges': file_graph['edges']
+        }
+        
         # Save to cache with filter information
         cache_manager.save_parsed_files(project_path, parsed_files)
-        cache_manager.save_dependency_graph(project_path, file_graph)
+        cache_manager.save_dependency_graph(project_path, combined_graph)
         cache_manager.save_metadata(project_path, {
             'file_count': len(parsed_files),
             'function_count': total_functions,
@@ -304,7 +329,19 @@ def get_graph():
                 'message': 'No graph data found. Run scan first.'
             }), 404
         
-        return jsonify(graph_data)
+        # Extract the requested graph type
+        if graph_type == 'function' and 'function_graph' in graph_data:
+            result = graph_data['function_graph']
+        elif graph_type == 'file' and 'file_graph' in graph_data:
+            result = graph_data['file_graph']
+        else:
+            # Fallback to default nodes/edges
+            result = {
+                'nodes': graph_data.get('nodes', []),
+                'edges': graph_data.get('edges', [])
+            }
+        
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({
@@ -505,3 +542,52 @@ def get_visualizer_config():
             'success': False,
             'error': str(e)
         }), 500
+
+
+def _detect_technology(filepath: str, root: str) -> str:
+    """Detect technology stack from file path and content"""
+    filename = os.path.basename(filepath)
+    file_ext = os.path.splitext(filename)[1].lower()
+    try:
+        rel_path = os.path.relpath(filepath, root).replace("\\", "/")
+    except ValueError:
+        rel_path = os.path.abspath(filepath).replace("\\", "/")
+    
+    # Check for Next.js indicators
+    if 'pages' in rel_path or 'app' in rel_path or filename == 'next.config.js':
+        return 'nextjs'
+    
+    # Check for React indicators
+    if filename.endswith('.jsx') or 'react' in rel_path.lower():
+        return 'react'
+    
+    # Check for Vue.js
+    if filename.endswith('.vue'):
+        return 'vue'
+    
+    # Check for Node.js/Express
+    if file_ext == '.js' and ('server' in rel_path.lower() or 'api' in rel_path.lower()):
+        return 'nodejs'
+    
+    # Check for Express.js
+    if 'express' in rel_path.lower() or filename.endswith('.server.js'):
+        return 'express'
+    
+    # Return language as fallback
+    language_map = {
+        '.py': 'python',
+        '.js': 'javascript', 
+        '.ts': 'typescript',
+        '.tsx': 'typescript',
+        '.jsx': 'javascript',
+        '.css': 'css',
+        '.scss': 'css',
+        '.sass': 'css',
+        '.less': 'css',
+        '.html': 'html',
+        '.vue': 'vue',
+        '.json': 'json'
+    }
+    return language_map.get(file_ext, 'unknown')
+
+

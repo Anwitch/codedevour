@@ -57,16 +57,33 @@ class FilterPanel {
                 <!-- Language Filter -->
                 <div class="filter-group" style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem;">
-                        🔤 Language
+                        🔤 Language / Framework
                     </label>
-                    <select 
+                    <select
                         id="language-filter"
                         style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem;"
                     >
-                        <option value="all">All Languages</option>
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="typescript">TypeScript</option>
+                        <option value="all">All Technologies</option>
+                        <optgroup label="Languages">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="css">CSS</option>
+                            <option value="html">HTML</option>
+                            <option value="json">JSON</option>
+                        </optgroup>
+                        <optgroup label="Frontend Frameworks">
+                            <option value="nextjs">Next.js</option>
+                            <option value="react">React</option>
+                            <option value="vue">Vue.js</option>
+                        </optgroup>
+                        <optgroup label="CSS Frameworks">
+                            <option value="tailwind">Tailwind CSS</option>
+                        </optgroup>
+                        <optgroup label="Backend">
+                            <option value="nodejs">Node.js</option>
+                            <option value="express">Express.js</option>
+                        </optgroup>
                     </select>
                 </div>
                 

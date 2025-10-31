@@ -127,9 +127,9 @@ class DetailsSidebar {
                 <div style="font-size: 0.85rem; color: #666;">
                     Lines ${func.line_start}-${func.line_end}
                     ${func.is_async ? ' · <span style="color: #DC143C;">async</span>' : ''}
-                    ${func.decorators.length > 0 ? ` · @${func.decorators.join(', @')}` : ''}
+                    ${func.decorators && func.decorators.length > 0 ? ` · @${func.decorators.join(', @')}` : ''}
                 </div>
-                ${func.calls.length > 0 ? `
+                ${func.calls && func.calls.length > 0 ? `
                     <div style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">
                         Calls: ${func.calls.slice(0, 3).join(', ')}${func.calls.length > 3 ? '...' : ''}
                     </div>

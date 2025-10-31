@@ -16,8 +16,9 @@ from collections import defaultdict, deque
 class DependencyAnalyzer:
     """Analyze code dependencies and build relationship graphs"""
     
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str, alias_config: Dict[str, Any] = None):
         self.project_root = os.path.abspath(project_root)
+        self.alias_config = alias_config or {}
         self.parsed_files = {}
         self.file_graph = {'nodes': [], 'edges': []}
         self.function_graph = {'nodes': [], 'edges': []}
@@ -240,49 +241,160 @@ class DependencyAnalyzer:
         module_map = {}
         
         for filepath in self.parsed_files.keys():
-            # Convert file path to module name
+            # Convert file path to module name (handle both Unix and Windows paths)
             rel_path = os.path.relpath(filepath, self.project_root)
-            module_name = rel_path.replace(os.sep, '.').replace('.py', '')
+            
+            # Normalize path separators
+            rel_path = rel_path.replace('\\', '/')
+            
+            # Remove extensions for module mapping
+            for ext in ['.py', '.js', '.jsx', '.ts', '.tsx']:
+                if rel_path.endswith(ext):
+                    rel_path = rel_path[:-len(ext)]
+                    break
+            
+            # Convert path to module name (replace / with .)
+            module_name = rel_path.replace('/', '.')
             module_map[module_name] = filepath
+            
+            # Also add intermediate package names
+            parts = module_name.split('.')
+            for i in range(1, len(parts)):
+                partial_module = '.'.join(parts[:i])
+                if partial_module not in module_map:
+                    # Try to find __init__.py for this package
+                    package_dir = os.path.join(self.project_root, *parts[:i])
+                    init_file = os.path.join(package_dir, '__init__.py')
+                    if os.path.exists(init_file):
+                        module_map[partial_module] = init_file
         
         return module_map
     
     def _resolve_import(self, module: str, current_file: str, module_map: Dict[str, str]) -> Optional[str]:
         """Resolve import statement to actual file path"""
-        # Try direct module name
+        # Skip external/built-in modules
+        external_prefixes = [
+            'os', 'sys', 'json', 're', 'ast', 'time', 'datetime', 'typing',
+            'flask', 'esprima', 'pathlib', 'collections', 'hashlib',
+            'psutil', 'tiktoken', 'werkzeug', 'jinja2', 'click',
+            'react', 'vue', 'angular', 'axios', 'lodash', 'moment',
+            '@angular', '@types', 'node:', 'fs', 'path', 'http', 'https'
+        ]
+        if any(module.startswith(prefix) for prefix in external_prefixes):
+            return None
+
+        # --- Resolution Strategy ---
+        # 1. Handle path aliases like @/
+        # 2. JavaScript/TypeScript style relative imports (./, ../)
+        # 3. Python style absolute and relative imports
+
+        # 1. Handle Path Aliases
+        for alias, paths in self.alias_config.items():
+            # Remove '/*' from the alias
+            alias_prefix = alias.replace('/*', '')
+            
+            if module.startswith(alias_prefix):
+                for path_template in paths:
+                    # Remove '/*' from the path template
+                    base_path = path_template.replace('/*', '')
+                    
+                    # Construct the full path
+                    path_after_alias = module[len(alias_prefix):]
+                    potential_path = os.path.join(self.project_root, base_path, path_after_alias.replace('/', os.sep))
+                    
+                    # Now, try to resolve this path with extensions
+                    extensions_to_try = ['.js', '.jsx', '.ts', '.tsx', '.json']
+            
+            # a) Check with extensions
+            for ext in extensions_to_try:
+                path_with_ext = potential_path + ext
+                if os.path.isfile(path_with_ext) and path_with_ext in self.parsed_files:
+                    return path_with_ext
+            
+            # b) Check for directory index file
+            for ext in extensions_to_try:
+                path_with_index = os.path.join(potential_path, 'index' + ext)
+                if os.path.isfile(path_with_index) and path_with_index in self.parsed_files:
+                    return path_with_index
+
+        # 2. JS/TS Relative Import Resolution
+        if module.startswith('./') or module.startswith('../'):
+            current_dir = os.path.dirname(current_file)
+            
+            # Construct the absolute path
+            potential_path = os.path.abspath(os.path.join(current_dir, module))
+
+            # Check for various extensions
+            extensions_to_try = ['', '.js', '.jsx', '.ts', '.tsx', '.json']
+            
+            # a) Check with extensions (e.g., import './utils')
+            for ext in extensions_to_try:
+                path_with_ext = potential_path + ext
+                if os.path.isfile(path_with_ext) and path_with_ext in self.parsed_files:
+                    return path_with_ext
+            
+            # b) Check for directory index file (e.g., import './components')
+            for ext in extensions_to_try:
+                path_with_index = os.path.join(potential_path, 'index' + ext)
+                if os.path.isfile(path_with_index) and path_with_index in self.parsed_files:
+                    return path_with_index
+
+        # 2. Python Style Import Resolution (and fallback for JS)
+        
+        # a) Direct module match (e.g., 'server.config')
         if module in module_map:
             return module_map[module]
-        
-        # Try relative imports
-        current_dir = os.path.dirname(current_file)
-        
-        # Handle relative imports (. and ..)
+
+        # b) Python relative import (e.g., 'from . import config')
         if module.startswith('.'):
-            parts = module.split('.')
-            level = len(parts) - len([p for p in parts if p])
+            current_dir = os.path.dirname(current_file)
+            rel_project_dir = os.path.relpath(current_dir, self.project_root)
             
-            # Go up 'level' directories
-            target_dir = current_dir
-            for _ in range(level - 1):
-                target_dir = os.path.dirname(target_dir)
+            # Normalize to use dots as separators
+            package_path = rel_project_dir.replace(os.sep, '.')
             
-            # Add remaining path
-            remaining = '.'.join([p for p in parts if p])
-            if remaining:
-                target_path = os.path.join(target_dir, remaining.replace('.', os.sep) + '.py')
-            else:
-                target_path = os.path.join(target_dir, '__init__.py')
+            # Handle leading dots for levels up
+            level = 0
+            for char in module:
+                if char == '.':
+                    level += 1
+                else:
+                    break
             
-            if os.path.exists(target_path):
-                return os.path.abspath(target_path)
+            # Construct the absolute module path
+            if level > 0:
+                package_parts = package_path.split('.')
+                # Go up `level - 1` directories
+                base_parts = package_parts[:-(level - 1)]
+                
+                # Get the rest of the module path (after the dots)
+                rest_of_module = module[level:]
+                if rest_of_module:
+                    final_module = '.'.join(base_parts + [rest_of_module])
+                else:
+                    final_module = '.'.join(base_parts)
+                
+                if final_module in module_map:
+                    return module_map[final_module]
+
+        # c) Fallback: Check if the module string corresponds to a file path from root
+        # (Handles non-relative JS imports like 'components/Button')
+        potential_path_from_root = os.path.join(self.project_root, module.replace('/', os.sep))
         
-        # Try as submodule of current package
-        current_package = os.path.dirname(current_file)
-        potential_path = os.path.join(current_package, module.replace('.', os.sep) + '.py')
+        extensions_to_try = ['.js', '.jsx', '.ts', '.tsx', '.py', '.json']
         
-        if os.path.exists(potential_path):
-            return os.path.abspath(potential_path)
+        # Check with extensions
+        for ext in extensions_to_try:
+            path_with_ext = potential_path_from_root + ext
+            if os.path.isfile(path_with_ext) and path_with_ext in self.parsed_files:
+                return path_with_ext
         
+        # Check for directory index file
+        for ext in extensions_to_try:
+            path_with_index = os.path.join(potential_path_from_root, 'index' + ext)
+            if os.path.isfile(path_with_index) and path_with_index in self.parsed_files:
+                return path_with_index
+
         return None
     
     def _build_adjacency_list(self) -> Dict[str, List[str]]:

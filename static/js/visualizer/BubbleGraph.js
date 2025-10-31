@@ -197,11 +197,27 @@ class BubbleGraph {
      * Get node color based on file type or metrics
      */
     _getNodeColor(node) {
-        // Color by file type or language
+        // Enhanced color mapping for technology stacks
         const colorMap = {
+            // Core languages
             'python': '#3572A5',
             'javascript': '#F1E05A',
             'typescript': '#2B7489',
+            'css': '#563d7c',
+            'html': '#e34c26',
+            'json': '#292929',
+            
+            // Framework-specific colors
+            'nextjs': '#000000',        // Black for Next.js
+            'react': '#61DAFB',         // Light blue for React
+            'tailwind': '#06B6D4',      // Cyan for Tailwind
+            'nodejs': '#68A063',        // Green for Node.js
+            'express': '#000000',       // Black for Express
+            'vue': '#4FC08D',           // Green for Vue.js
+            'angular': '#DD0031',       // Red for Angular
+            'svelte': '#FF3E00',        // Orange for Svelte
+            
+            // Default
             'default': '#DC143C' // Crimson theme
         };
 
