@@ -112,9 +112,9 @@ def read_exclude_file(file_path: str) -> list[str]:
 def is_excluded_path(root: str, filename: str, exclude_set: set[str], base_folder: str = "") -> bool:
     """
     Cek apakah file/folder harus di-exclude berdasarkan path lengkap.
-    Mendukung:
-    - Nama file: page.html
-    - Path relatif: src/pages/page.html
+    Supports:
+    - Filename: page.html
+    - Relative path: src/pages/page.html
     - Pattern substring: /node_modules/, .log
     """
     full_path = os.path.join(root, filename)
@@ -228,7 +228,7 @@ def add_files_to_list(
 
 def list_all_names(folder_path: str, include_files: bool = True, include_size: bool = False, exclude_file: str | None = None, just_file_path: str | None = None) -> list[dict]:
     if not os.path.isdir(folder_path):
-        log(f"[!] Error: Folder '{folder_path}' tidak ditemukan atau bukan direktori.")
+        log(f"[!] Error: Folder '{folder_path}' not found or not a directory.")
         return []
 
     all_items: list[dict] = []
@@ -242,7 +242,7 @@ def list_all_names(folder_path: str, include_files: bool = True, include_size: b
     # Base folder untuk relative path calculation
     base_folder = os.path.abspath(folder_path)
 
-    log(f"-> Memulai penelusuran dari direktori: {folder_path}")
+    log(f"-> Starting search from directory: {folder_path}")
     log(f"-> Exclude patterns: {len(exclude_set)} patterns")
     log(f"-> Just me patterns: {len(just_set)} patterns" if just_set else "-> No just_me filtering")
 
@@ -332,9 +332,9 @@ def main() -> None:
                         handle.write(f"{item['path']}; [{item['type']}]; {item['size_bytes']}; {item['formatted_size']}\n")
                     else:
                         handle.write(f"{item['path']}; [{item['type']}]\n")
-            log(f"\n-> Berhasil! Daftar semua file/folder disimpan ke '{output_path}'.")
+            log(f"\n-> Success! List of all files/folders saved to '{output_path}'.")
         except Exception as exc:
-            log(f"\n[!] Gagal menulis file output: {exc}")
+            log(f"\n[!] Failed to write output file: {exc}")
 
 
 if __name__ == "__main__":

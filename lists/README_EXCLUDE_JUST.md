@@ -8,7 +8,7 @@ Fitur exclude dan just_me sekarang mendukung **path lengkap**, bukan hanya nama 
 
 ## Format yang Didukung
 
-### 1. Nama File Saja (Backward Compatible)
+### 1. Filename Only (Backward Compatible)
 ```
 page.html
 app.py
@@ -139,7 +139,7 @@ Hasil: Hanya ambil file di `src/` kecuali `tests/` dan `__pycache__/`
 
 - Gunakan forward slash (`/`) atau backslash (`\`) - keduanya akan dinormalisasi
 - Path relatif dari root folder yang di-scan
-- Tidak perlu leading slash
+- No leading slash needed
 
 **Contoh**:
 ```txt
@@ -150,9 +150,9 @@ Hasil: Hanya ambil file di `src/` kecuali `tests/` dan `__pycache__/`
 
 ## Testing
 
-Untuk test apakah pattern Anda bekerja:
-1. Jalankan Names Extractor dengan setting yang sama
-2. Periksa output - file yang muncul adalah yang akan di-process
+To test if your pattern works:
+1. Run Names Extractor with the same settings
+2. Check the output - the files that appear are the ones that will be processed
 3. Sesuaikan pattern di `exclude_me.txt` atau `just_me.txt`
 4. Ulangi sampai hasilnya sesuai
 

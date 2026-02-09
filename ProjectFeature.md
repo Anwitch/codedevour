@@ -1,27 +1,28 @@
-# 🧭 CodeDevour – Intelligent Codebase Bundler & Explorer
+# CodeDevour - Project Feature Documentation
 
-**CodeDevour** is a powerful web-based tool for **exploring project structure**, **bundling code files**, and **managing file exclusions** through an intuitive interface. Transform any codebase into a single, well-organized document perfect for documentation, code review, AI analysis, or academic purposes.
+## Overview
+
+**CodeDevour** is a powerful web-based tool for exploring project structure, bundling code files, and managing file exclusions through an intuitive interface. It transforms any codebase into a single, well-organized document perfect for documentation, code review, AI analysis, or academic purposes.
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
-1. [Key Features](#key-features)
+1. [Core Features](#core-features)
 2. [Dashboard Interface](#dashboard-interface)
 3. [Code Explorer](#code-explorer)
-4. [File Management](#file-management)
+4. [File Management Features](#file-management-features)
 5. [Backend Architecture](#backend-architecture)
-6. [API Endpoints](#api-endpoints)
-7. [Configuration](#configuration)
-8. [Technology Stack](#technology-stack)
-9. [Installation & Setup](#installation--setup)
-10. [How to Use](#how-to-use)
+6. [Visualization Engine](#visualization-engine)
+7. [API Endpoints](#api-endpoints)
+8. [Configuration](#configuration)
+9. [Technology Stack](#technology-stack)
 
 ---
 
-## ✨ Key Features
+## Core Features
 
-### 🌍 Multi-Language Code Visualizer
+### 1. Multi-Language Code Visualizer
 
 The code visualizer supports **13+ programming languages** with smart parsing capabilities:
 
@@ -54,7 +55,7 @@ The code visualizer supports **13+ programming languages** with smart parsing ca
 - Centrality metrics for identifying important files
 - Circular dependency detection
 
-### 📂 Interactive Project Explorer
+### 2. Interactive Project Explorer
 
 #### Visual File Tree
 - Lazy-loading folder sizes for fast performance
@@ -67,7 +68,7 @@ The code visualizer supports **13+ programming languages** with smart parsing ca
 - Drag files/folders to **Just Me** tab for inclusion filtering
 - Real-time list updates
 
-### 📝 Smart Text Bundler
+### 3. Smart Text Bundler
 
 #### File Extraction
 - Automatic file merging into single text file
@@ -91,7 +92,7 @@ WA
 
 ---
 
-## 🖥 Dashboard Interface
+## Dashboard Interface
 
 ### Main Dashboard (`/`)
 
@@ -104,7 +105,7 @@ The main dashboard provides access to all core features through a tabbed interfa
 
 #### 1. NamesExtractor Panel
 
-**Purpose**: Generate a list of files and folders in project.
+**Purpose**: Generate a list of files and folders in the project.
 
 **Features**:
 - ✅ Include Files toggle
@@ -177,7 +178,7 @@ The main dashboard provides access to all core features through a tabbed interfa
 
 ---
 
-## 🔍 Code Explorer
+## Code Explorer
 
 ### Access
 Navigate to: `/visualizer`
@@ -253,7 +254,7 @@ Navigate to: `/visualizer`
 
 ---
 
-## 📁 File Management
+## File Management Features
 
 ### 1. Async Task Processing
 
@@ -304,7 +305,7 @@ Navigate to: `/visualizer`
 
 ---
 
-## 🏗️ Backend Architecture
+## Backend Architecture
 
 ### Application Structure
 
@@ -348,7 +349,126 @@ server/
 
 ---
 
-## 📡 API Endpoints
+## Visualization Engine
+
+### Code Parser (`parser.py`)
+
+**Class**: `CodeParser`
+
+#### Methods
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `parse_file(filepath)` | `Dict\|None` | Parse single file |
+| `is_supported(filepath)` | `bool` | Check extension support |
+| `_parse_python_file(filepath)` | `Dict` | AST-based Python parsing |
+| `_parse_js_ts_file(filepath)` | `Dict` | Esprima + regex JS/TS parsing |
+| `_parse_java_file(filepath)` | `Dict` | Regex-based Java parsing |
+| `_parse_c_cpp_file(filepath)` | `Dict` | Regex-based C/C++ parsing |
+| `_parse_go_file(filepath)` | `Dict` | Regex-based Go parsing |
+| `_parse_rust_file(filepath)` | `Dict` | Regex-based Rust parsing |
+| `_parse_php_file(filepath)` | `Dict` | Regex-based PHP parsing |
+| `_parse_ruby_file(filepath)` | `Dict` | Regex-based Ruby parsing |
+| `_parse_csharp_file(filepath)` | `Dict` | Regex-based C# parsing |
+| `_parse_swift_file(filepath)` | `Dict` | Regex-based Swift parsing |
+| `_parse_kotlin_file(filepath)` | `Dict` | Regex-based Kotlin parsing |
+
+#### Output Structure
+```python
+{
+    'filepath': str,
+    'language': str,
+    'size': int,
+    'lines': int,
+    'functions': [
+        {
+            'name': str,
+            'line_start': int,
+            'line_end': int,
+            'parameters': [str],
+            'calls': [str],
+            'decorators': [str],
+            'is_async': bool
+        }
+    ],
+    'classes': [
+        {
+            'name': str,
+            'line_start': int,
+            'line_end': int,
+            'bases': [str],
+            'methods': [...],
+            'decorators': [str]
+        }
+    ],
+    'imports': [
+        {
+            'module': str,
+            'items': [str],
+            'line': int
+        }
+    ]
+}
+```
+
+### Dependency Analyzer (`dependency_analyzer.py`)
+
+**Class**: `DependencyAnalyzer`
+
+#### Methods
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `build_file_graph()` | `Dict` | File-level dependency graph |
+| `build_function_graph()` | `Dict` | Function call graph |
+| `detect_circular_dependencies()` | `List[List[str]]` | Find circular imports |
+| `find_dead_code()` | `Dict` | Identify unused code |
+| `get_file_dependencies(filepath)` | `Dict` | Get file's dependencies |
+
+#### Graph Output Structure
+```python
+{
+    'nodes': [
+        {
+            'id': str,          # Relative file path
+            'type': 'file',
+            'size': int,
+            'lines': int,
+            'language': str,
+            'functions_count': int,
+            'classes_count': int,
+            'centrality': float,  # 0-1 importance score
+            'in_degree': int,     # Number of imports
+            'out_degree': int     # Number of importers
+        }
+    ],
+    'edges': [
+        {
+            'source': str,
+            'target': str,
+            'type': 'import',
+            'module': str,
+            'items': [str]
+        }
+    ]
+}
+```
+
+### Cache Manager
+
+**Purpose**: Cache parsed results for performance.
+
+**Cached Data**:
+- Parsed files (per-file metadata)
+- Dependency graphs
+- Scan metadata (timestamp, counts)
+
+**Cache Invalidation**:
+- Automatic when filter patterns change
+- Manual clear via API
+- Project-specific cache isolation
+
+---
+
+## API Endpoints
 
 ### Configuration
 
@@ -409,7 +529,7 @@ server/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Configuration File (`config.json`)
 
@@ -441,7 +561,7 @@ server/
 
 ---
 
-## 🧰 Technology Stack
+## Technology Stack
 
 | Layer | Technology |
 |-------|-------------|
@@ -455,7 +575,7 @@ server/
 
 ---
 
-## 🤖 AI Digest Feature (`ai_digest.py`)
+## AI Digest Feature (`ai_digest.py`)
 
 ### Purpose
 Generate AI-optimized code bundles with smart chunking.
@@ -492,7 +612,7 @@ ai-digest-[timestamp].zip
 
 ---
 
-## 📊 File Formats
+## File Formats
 
 ### BA/WA Delimiters
 ```
@@ -512,7 +632,7 @@ WA                              # Border Below - End of file
 
 ---
 
-## ⚡ Performance Considerations
+## Performance Considerations
 
 ### Optimizations
 1. **128KB streaming chunks** for large file output
@@ -529,7 +649,7 @@ WA                              # Border Below - End of file
 
 ---
 
-## 🌐 Browser Support
+## Browser Support
 
 - Chrome/Edge (recommended)
 - Firefox
@@ -538,56 +658,24 @@ WA                              # Border Below - End of file
 
 ---
 
-## 🔧 Installation & Setup
+## Installation & Usage
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/Anwitch/codedevour.git
-   cd codedevour
-   ```
-2. **Create and activate a virtual environment**:
-   ```bash
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
-   
-   # Linux/macOS
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Run the application**:
-   ```bash
-   # Windows
-   scripts\run_app.bat
-   
-   # Linux/macOS
-   python server/app.py
-   ```
-   The application will open automatically at `http://127.0.0.1:5000`.
+### Quick Start
+```bash
+# Windows
+scripts\run_app.bat
+
+# Linux/macOS
+python server/app.py
+```
+
+### Access
+- Dashboard: http://127.0.0.1:5000
+- Code Explorer: http://127.0.0.1:5000/visualizer
 
 ---
 
-## 🎯 How to Use
-
-1. **Launch the application** and open it in your browser.
-2. **Set Project Path**: Enter the path to your project and click "Set Path".
-3. **Explore**: Use the **NamesExtractor** to view the file tree or the **Code Explorer** to visualize dependencies.
-4. **Bundle**: Use the **TextExtractor** to merge code into a single file.
-5. **Filter**: Manage exclusions and inclusions in the **Exclude Me** and **Just Me** tabs.
-
----
-
-## ⚙️ Configuration
-
-The application is designed to be portable and works out of the box. For advanced configurations, such as path aliases in JavaScript/TypeScript projects, ensure a `tsconfig.json` or `jsconfig.json` is present in your project root.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Features can be extended by:
 1. Adding new parsers in `server/visualizer/parser.py`
@@ -597,6 +685,4 @@ Features can be extended by:
 
 ---
 
-## 📜 License
-
-MIT License – See the `LICENSE` file for details.
+*Documentation generated for CodeDevour v1.0+*

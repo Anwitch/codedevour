@@ -1,5 +1,18 @@
 /* Code Explorer - Visualization Styles */
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    display: flex;
+}
+
 /* Container Layout */
 .visualizer-container {
     display: grid;
@@ -122,6 +135,20 @@
 
     100% {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
     }
 }
 
@@ -274,4 +301,98 @@
 .function-item:hover,
 .class-item:hover {
     transform: translateX(4px);
+}
+
+/* File Tree */
+.file-tree-container {
+    width: 20%;
+    height: 100vh;
+    overflow-y: auto;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    padding: 1rem;
+    scroll-behavior: smooth;
+}
+
+.file-tree-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-tree-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.file-tree-container::-webkit-scrollbar-thumb {
+    background: #DC143C;
+    border-radius: 4px;
+}
+
+.file-tree-container::-webkit-scrollbar-thumb:hover {
+    background: #B01030;
+}
+
+.file-tree ul {
+    list-style: none;
+    padding-left: 1rem;
+}
+
+.file-tree-item.folder>ul {
+    display: none;
+}
+
+.file-tree-item.folder.open>ul {
+    display: block;
+}
+
+.file-tree-label {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.file-tree-label:hover {
+    background: #f3f4f6;
+}
+
+.file-tree-label.active {
+    background: #DC143C;
+    color: white;
+}
+
+.file-tree-label.active .folder-icon,
+.file-tree-label.active .file-icon {
+    filter: brightness(0) invert(1);
+}
+
+.file-tree-label.unavailable {
+    opacity: 0.5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.file-tree-label.unavailable:hover {
+    background: #f9f9f9;
+}
+
+.file-tree-label.unavailable .file-icon {
+    opacity: 0.5;
+}
+
+.folder-toggle {
+    margin-right: 0.5rem;
+}
+
+.main-content {
+    width: 80%;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.folder-icon,
+.file-icon {
+    margin-right: 0.5rem;
 }

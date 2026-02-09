@@ -206,7 +206,7 @@ class BubbleGraph {
             'css': '#563d7c',
             'html': '#e34c26',
             'json': '#292929',
-            
+
             // Framework-specific colors
             'nextjs': '#000000',        // Black for Next.js
             'react': '#61DAFB',         // Light blue for React
@@ -216,7 +216,7 @@ class BubbleGraph {
             'vue': '#4FC08D',           // Green for Vue.js
             'angular': '#DD0031',       // Red for Angular
             'svelte': '#FF3E00',        // Orange for Svelte
-            
+
             // Default
             'default': '#DC143C' // Crimson theme
         };
@@ -400,8 +400,92 @@ class BubbleGraph {
      * Focus on specific node
      */
     focusNode(nodeId) {
-        const node = this.nodes.find(n => n.id === nodeId);
-        if (!node) return;
+        console.log('focusNode called with:', nodeId);
+
+        // Normalize path separators for comparison
+        let normalizedSearchPath = nodeId.replace(/\\/g, '/');
+        console.log('Normalized search path:', normalizedSearchPath);
+        console.log('Available nodes:', this.nodes.length);
+
+        // Try multiple matching strategies
+        const node = this.nodes.find(n => {
+            const normalizedNodePath = n.id.replace(/\\/g, '/');
+
+            // Strategy 1: Exact match
+            if (normalizedNodePath === normalizedSearchPath) {
+                console.log('Found exact match:', normalizedNodePath);
+                return true;
+            }
+
+            // Strategy 2: Node path ends with search path
+            if (normalizedNodePath.endsWith(normalizedSearchPath)) {
+                console.log('Found ending match:', normalizedNodePath);
+                return true;
+            }
+
+            // Strategy 3: Search path ends with node path (most common case)
+            if (normalizedSearchPath.endsWith(normalizedNodePath)) {
+                console.log('Found reverse ending match:', normalizedNodePath);
+                return true;
+            }
+
+            // Strategy 4: Remove first path segment from search and try again
+            // (handles cases like "Permata/backend/..." vs "backend/...")
+            const searchParts = normalizedSearchPath.split('/');
+            if (searchParts.length > 1) {
+                const searchWithoutFirst = searchParts.slice(1).join('/');
+                if (normalizedNodePath === searchWithoutFirst ||
+                    normalizedNodePath.endsWith(searchWithoutFirst) ||
+                    searchWithoutFirst.endsWith(normalizedNodePath)) {
+                    console.log('Found match after removing first segment:', normalizedNodePath);
+                    return true;
+                }
+            }
+
+            // Strategy 5: Smart filename match with path components
+            const searchFileName = normalizedSearchPath.split('/').pop();
+            const nodeFileName = normalizedNodePath.split('/').pop();
+            if (searchFileName === nodeFileName) {
+                // Additional check: ensure path components match from the end
+                const nodeParts = normalizedNodePath.split('/');
+                const minLen = Math.min(searchParts.length, nodeParts.length);
+
+                let matchCount = 0;
+                for (let i = 1; i <= minLen; i++) {
+                    if (searchParts[searchParts.length - i] === nodeParts[nodeParts.length - i]) {
+                        matchCount++;
+                    } else {
+                        break;
+                    }
+                }
+
+                // If at least 2 parts match from the end (including filename), consider it a match
+                if (matchCount >= 2) {
+                    console.log('Found filename match with path components:', normalizedNodePath);
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        if (!node) {
+            console.warn(`Node not found: ${nodeId}`);
+            console.log('Sample node paths:', this.nodes.slice(0, 5).map(n => n.id));
+
+            // Check if any node contains part of the filename
+            const searchFileName = normalizedSearchPath.split('/').pop();
+            const matchingNodes = this.nodes.filter(n => n.id.includes(searchFileName));
+            if (matchingNodes.length > 0) {
+                console.log(`Found ${matchingNodes.length} nodes containing "${searchFileName}":`, matchingNodes.map(n => n.id));
+            } else {
+                console.log(`No nodes found containing "${searchFileName}" - file may not be in graph (parse error or filtered out)`);
+            }
+
+            return null;
+        }
+
+        console.log('Focusing on node:', node.id);
 
         // Calculate zoom transform to center on node
         const scale = 1.5;
@@ -412,11 +496,114 @@ class BubbleGraph {
             .transition()
             .duration(750)
             .call(
-                d3.zoom().transform,
+                this.zoom.transform,
                 d3.zoomIdentity.translate(x, y).scale(scale)
             );
 
         this._highlightConnections(node);
+
+        return node;
+    }
+
+    /**
+     * Programmatically dispatches a click event on a node.
+     */
+    dispatchClickEvent(nodeId) {
+        console.log('dispatchClickEvent called with:', nodeId);
+
+        // Normalize path separators for comparison
+        let normalizedSearchPath = nodeId.replace(/\\/g, '/');
+
+        // Use the same matching logic as focusNode
+        const node = this.nodes.find(n => {
+            const normalizedNodePath = n.id.replace(/\\/g, '/');
+
+            // Try multiple strategies (same as focusNode)
+            if (normalizedNodePath === normalizedSearchPath) return true;
+            if (normalizedNodePath.endsWith(normalizedSearchPath)) return true;
+            if (normalizedSearchPath.endsWith(normalizedNodePath)) return true;
+
+            // Remove first path segment and try again
+            const searchParts = normalizedSearchPath.split('/');
+            if (searchParts.length > 1) {
+                const searchWithoutFirst = searchParts.slice(1).join('/');
+                if (normalizedNodePath === searchWithoutFirst ||
+                    normalizedNodePath.endsWith(searchWithoutFirst) ||
+                    searchWithoutFirst.endsWith(normalizedNodePath)) {
+                    return true;
+                }
+            }
+
+            // Filename matching with path components
+            const searchFileName = normalizedSearchPath.split('/').pop();
+            const nodeFileName = normalizedNodePath.split('/').pop();
+            if (searchFileName === nodeFileName) {
+                const nodeParts = normalizedNodePath.split('/');
+                const minLen = Math.min(searchParts.length, nodeParts.length);
+
+                let matchCount = 0;
+                for (let i = 1; i <= minLen; i++) {
+                    if (searchParts[searchParts.length - i] === nodeParts[nodeParts.length - i]) {
+                        matchCount++;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (matchCount >= 2) return true;
+            }
+
+            return false;
+        });
+
+        if (!node) {
+            console.warn(`Node not found for click event: ${nodeId}`);
+            return;
+        }
+
+        console.log('Dispatching click event for node:', node.id);
+
+        // Add pulse animation to the node
+        const nodeElement = this.nodeElements.filter(d => d.id === node.id);
+        if (!nodeElement.empty()) {
+            // Apply pulse effect
+            nodeElement
+                .transition()
+                .duration(300)
+                .attr('r', this._getNodeRadius(node) * 1.3)
+                .transition()
+                .duration(300)
+                .attr('r', this._getNodeRadius(node));
+        }
+
+        // Trigger the click handler directly
+        if (this.onNodeClick) {
+            this.onNodeClick(node);
+        }
+    }
+
+    /**
+     * Focuses on a node and then simulates a click.
+     */
+    focusAndClickNode(nodeId) {
+        console.log('focusAndClickNode called with:', nodeId);
+
+        // Focus on the node first
+        const node = this.focusNode(nodeId);
+
+        if (!node) {
+            console.warn('Cannot click node - node not found:', nodeId);
+            return false;
+        }
+
+        console.log('Node found, will click after delay:', node.id);
+
+        // A small delay ensures the zoom transition starts before the click event fires.
+        setTimeout(() => {
+            this.dispatchClickEvent(nodeId);
+        }, 100);
+
+        return true;
     }
 
     /**

@@ -7,8 +7,8 @@ from typing import List, Dict, Tuple, Optional
 # =========================
 def _get_encoder_for_model(model_target: str):
     """
-    Pilih encoder tiktoken berdasarkan model_target.
-    Fallback aman: cl100k_base.
+    Select the tiktoken encoder based on the model_target.
+    Safe fallback: cl100k_base.
     """
     try:
         import tiktoken
@@ -16,9 +16,9 @@ def _get_encoder_for_model(model_target: str):
         return None
 
     model = (model_target or "").lower()
-    # mapping ringan & aman
-    # - o200k_base untuk model konteks sangat besar (mis. GPT-4.1/4o long context)
-    # - cl100k_base untuk mayoritas (4/4o/mini)
+    # light & safe mapping
+    # - o200k_base for very large context models (e.g., GPT-4.1/4o long context)
+    # - cl100k_base for the majority (4/4o/mini)
     try:
         if any(k in model for k in ["o200k", "128k", "200k", "4.1"]):
             return tiktoken.get_encoding("o200k_base")
@@ -88,18 +88,18 @@ def parse_ba_wa(output_text: str) -> List[Dict]:
 # =========================
 def one_line_summary(path: str, content: str) -> str:
     """
-    Ringkasan 1 kalimat heuristik:
-      - Ambil baris docstring/comment/heading pertama yang non-empty
-      - Jika tak ada, kembalikan nama file
+    Heuristic 1-sentence summary:
+      - Take the first non-empty docstring/comment/heading line
+      - If none, return the filename
     """
-    # coba docstring python
+    # try python docstring
     m = re.search(r'("""|\'\'\')\s*(.+?)\s*\1', content, re.S)
     if m:
         s = m.group(2).strip().splitlines()[0].strip()
         if s:
             return s[:160]
 
-    # komentar umum // # <!-- -->
+    # general comment // # <!-- -->
     for line in content.splitlines():
         L = line.strip()
         if not L:
@@ -108,19 +108,19 @@ def one_line_summary(path: str, content: str) -> str:
             L = re.sub(r"^(\#|\s*//\s*|<!--\s*|\s*-->\s*)", "", L).strip()
             if L:
                 return L[:160]
-        # heading markdown
+        # markdown heading
         if L.startswith("#"):
             return L.lstrip("#").strip()[:160]
-    # fallback: nama file
+    # fallback: filename
     return os.path.basename(path)
 
 def collect_api_map(items: List[Dict]) -> List[str]:
     """
-    Kumpulkan endpoint sederhana:
+    Collect simple endpoints:
       - Flask: @app.route('/x', methods=['GET'])
       - Express: app.get('/x'), router.post('/y')
       - FastAPI: @app.get('/x')
-    Output: list string "METHOD PATH (file)"
+    Output: list of strings "METHOD PATH (file)"
     """
     rows = []
     rx = [
@@ -138,16 +138,16 @@ def collect_api_map(items: List[Dict]) -> List[str]:
         for pat, group_method, group_path in rx:
             for m in re.finditer(pat, c):
                 if group_method is None:
-                    # Flask route() tanpa method -> treat as GET
+                    # Flask route() without method -> treat as GET
                     method = "GET"
                     path = m.group(group_path)
                 else:
                     method = m.group(group_method).upper()
                     path = m.group(group_path)
                 rows.append(f"{method:6s} {path}    ({os.path.basename(p)})")
-    # dedup
+    # deduplicate
     rows = list(dict.fromkeys(rows))
-    return rows[:300]  # batasi
+    return rows[:300]  # limit
 
 # =========================
 # Truncation
@@ -158,7 +158,7 @@ def smart_truncate(enc, text: str, max_token: int,
     if toks <= max_token:
         return text, False
     ls = text.splitlines()
-    # adaptif jika file sangat besar
+    # adaptive if file is very large
     if toks > max_token * 2:
         head_lines = max(80, head_lines // 2)
         tail_lines = max(60, tail_lines // 2)
@@ -175,13 +175,13 @@ def smart_truncate(enc, text: str, max_token: int,
 # =========================
 def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk: int) -> str:
     """
-    Streaming ZIP langsung ke disk (tempfile). Return absolute zip_path.
-    - Menambahkan chunk 0000-overview (hard split)
-    - INDEX.md kaya (Chunk + Summary + Top 20 by tokens)
+    Stream ZIP directly to disk (tempfile). Return absolute zip_path.
+    - Adds chunk 0000-overview (hard split)
+    - Rich INDEX.md (Chunk + Summary + Top 20 by tokens)
     """
     enc = _get_encoder_for_model(model)
 
-    # 1) Klasifikasi overview vs non-overview
+    # 1) Classify overview vs non-overview
     def is_overview_path(p: str) -> bool:
         l = p.replace("\\","/").lower()
         base = os.path.basename(l)
@@ -190,7 +190,7 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
         if base in (".env.example","env.example"): return True
         if base.endswith(".prisma") or base.endswith(".sql"): return True
         if base == "dockerfile" or base.endswith("/dockerfile"): return True
-        if "architecture" in l or "arsitektur" in l: return True
+        if "architecture" in l: return True
         return False
 
     overview_files = []
@@ -198,7 +198,7 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
     for it in items:
         (overview_files if is_overview_path(it["path"]) else others).append(it)
 
-    # Urutan lainnya: backend → frontend → lain (heuristik ringan)
+    # Other order: backend → frontend → other (light heuristic)
     def prio(x):
         p = x["path"].replace("\\","/").lower()
         if any(k in p for k in ["/app.py","/main.py","/server.","/manage.py","/routes","/controllers","/router"]):
@@ -208,18 +208,18 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
         return (3, p)
 
     others_sorted = sorted(others, key=prio)
-    items_sorted = overview_files + others_sorted  # hanya untuk penomoran ringkas
+    items_sorted = overview_files + others_sorted  # only for concise numbering
 
-    # 2) Siapkan ZIP path
+    # 2) Prepare ZIP path
     tmpf = tempfile.NamedTemporaryFile(prefix="ai-digest-", suffix=".zip", delete=False)
     tmpf.close()
     zip_path = tmpf.name
 
-    index_rows = []   # utk tabel INDEX.md
-    file2chunk = {}   # peta file → no chunk
-    file_meta = []    # simpan (path, lang, loc, tokens, summary, sha)
+    index_rows = []   # for INDEX.md table
+    file2chunk = {}   # map file → chunk no
+    file_meta = []    # store (path, lang, loc, tokens, summary, sha)
 
-    # Helper tulis chunk
+    # Chunk writing helper
     def write_chunk(zf: zipfile.ZipFile, idx: int, content: str) -> str:
         name = f"chunks/chunk-{idx:04d}.txt"
         zf.writestr(name, content)
@@ -229,7 +229,7 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
         # 3) CHUNK 0000 - OVERVIEW (hard split)
         api_lines = collect_api_map(items)
         overview_blocks = []
-        # Persiapkan konten API lines
+        # Prepare API lines content
         api_content = api_lines if api_lines else ["(no routes detected)"]
         
         overview_intro = [
@@ -246,7 +246,7 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
         ]
         overview_blocks.append("\n".join(overview_intro))
 
-        # masukkan file overview
+        # insert overview files
         for it in overview_files:
             path, lang, content = it["path"], it["lang"], it["content"]
             loc = content.count("\n") + (0 if content.endswith("\n") else 1)
@@ -267,19 +267,19 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
 
             file_meta.append((path, lang, loc, toks, summ, sha))
 
-        # tulis chunk 0000
+        # write chunk 0000
         chunk0_content = "\n".join(overview_blocks).rstrip("\n")
         chunk_index = 0
         chunk_paths = [write_chunk(zf, chunk_index, chunk0_content)]
 
-        # tandai overview file berada di chunk 0
+        # mark overview files as being in chunk 0
         for it in overview_files:
             file2chunk[it["path"]] = 0
 
-        # 4) Chunking sisanya (token-aware + truncation cerdas)
+        # 4) Chunk the rest (token-aware + smart truncation)
         cur_buf = []
         cur_tok = 0
-        chunk_no = 1  # setelah 0000
+        chunk_no = 1  # after 0000
         half = max_tokens_per_chunk // 2
 
         def flush():
@@ -298,7 +298,7 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
             summ = one_line_summary(path, content)
             sha = _sha256(content)
 
-            # truncate file besar agar tetap masuk chunk
+            # truncate large files to fit in a chunk
             body, did_trunc = smart_truncate(enc, content, half)
             meta = [
                 "BA",
@@ -318,16 +318,16 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
             if cur_tok + block_tok > max_tokens_per_chunk and cur_buf:
                 flush()
 
-            # Jika masih lebih besar dari ukuran chunk, potong lagi kasar
+            # If still larger than chunk size, truncate again roughly
             if block_tok > max_tokens_per_chunk:
                 block, _ = smart_truncate(enc, block, max_tokens_per_chunk - 512)
                 block_tok = _safe_len_tokens(enc, block)
 
             if not cur_buf:
-                # file pertama di chunk baru → tandai mapping chunk
+                # first file in a new chunk → mark chunk mapping
                 file2chunk[path] = chunk_no
             else:
-                # kalau file menempati chunk yang sama
+                # if the file occupies the same chunk
                 file2chunk[path] = chunk_no
 
             cur_buf.append(block)
@@ -351,14 +351,14 @@ def build_digest_to_zipfile(items: List[Dict], model: str, max_tokens_per_chunk:
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2))
 
-        # 6) INDEX.md kaya: File | Lang | LOC | Tokens | Chunk | Summary
+        # 6) Rich INDEX.md: File | Lang | LOC | Tokens | Chunk | Summary
         index_lines = [
             "# AI Digest Index",
             "",
             "| File | Lang | LOC | Tokens | Chunk | Summary |",
             "| ---- | ---- | --- | ------ | ----- | ------- |",
         ]
-        # siapkan Top 20 by tokens
+        # prepare Top 20 by tokens
         top20 = sorted(file_meta, key=lambda x: x[3], reverse=True)[:20]
 
         for (path, lang, loc, toks, summ, sha) in file_meta:

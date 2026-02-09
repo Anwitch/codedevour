@@ -28,9 +28,9 @@ def set_project_path():
         new_path = clean_path(payload.get("path", "")).strip()
 
         if not new_path or not os.path.isdir(new_path):
-            return jsonify({"success": False, "error": "Path tidak valid atau tidak ditemukan."}), 400
+            return jsonify({"success": False, "error": "Invalid or not found path."}), 400
         if not is_allowed_path(new_path):
-            return jsonify({"success": False, "error": "Path tersebut tidak diizinkan."}), 403
+            return jsonify({"success": False, "error": "That path is not allowed."}), 403
 
         config = get_config()
         config["TARGET_FOLDER"] = new_path
@@ -38,9 +38,9 @@ def set_project_path():
 
         exclude_path = config.get("EXCLUDE_FILE_PATH", "")
         if sync_gitignore_to_exclude(new_path, exclude_path):
-            message = "Path berhasil diatur dan pola .gitignore digabungkan."
+            message = "Path set successfully and .gitignore patterns merged."
         else:
-            message = "Path berhasil diatur dan disimpan ke config.json."
+            message = "Path set successfully and saved to config.json."
 
         return jsonify({"success": True, "message": message})
     except Exception as exc:
@@ -63,25 +63,25 @@ def pick_folder():
     try:
         config = get_config()
         initial_dir = config.get("TARGET_FOLDER") or os.path.expanduser("~")
-        chosen = _open_folder_dialog("Pilih folder proyek", initial_dir)
+        chosen = _open_folder_dialog("Choose project folder", initial_dir)
 
         if not chosen:
-            return jsonify({"success": False, "error": "Pemilihan dibatalkan."}), 400
+            return jsonify({"success": False, "error": "Selection cancelled."}), 400
         if not is_allowed_path(chosen):
-            return jsonify({"success": False, "error": "Path tersebut tidak diizinkan."}), 403
+            return jsonify({"success": False, "error": "That path is not allowed."}), 403
 
         config["TARGET_FOLDER"] = chosen
         save_config(config)
 
         exclude_path = config.get("EXCLUDE_FILE_PATH", "")
         if sync_gitignore_to_exclude(chosen, exclude_path):
-            message = "Path diperbarui dari dialog dan pola .gitignore digabungkan."
+            message = "Path updated from dialog and .gitignore patterns merged."
         else:
-            message = "Path diperbarui dari dialog."
+            message = "Path updated from dialog."
 
         return jsonify({"success": True, "path": chosen, "message": message})
     except TclError as exc:
-        return jsonify({"success": False, "error": f"Tidak bisa membuka dialog folder (no display?): {exc}"}), 500
+        return jsonify({"success": False, "error": f"Could not open folder dialog (no display?): {exc}"}), 500
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
@@ -92,16 +92,16 @@ def pick_output_folder():
         config = get_config()
         output_file = config.get("OUTPUT_FILE") or ""
         initial_dir = os.path.dirname(output_file) if output_file else config.get("TARGET_FOLDER") or os.path.expanduser("~")
-        chosen = _open_folder_dialog("Pilih folder output TextExtractor", initial_dir)
+        chosen = _open_folder_dialog("Choose TextExtractor output folder", initial_dir)
 
         if not chosen:
-            return jsonify({"success": False, "error": "Pemilihan dibatalkan."}), 400
+            return jsonify({"success": False, "error": "Selection cancelled."}), 400
         if not os.path.isdir(chosen):
-            return jsonify({"success": False, "error": "Folder tidak valid."}), 400
+            return jsonify({"success": False, "error": "Invalid folder."}), 400
 
         return jsonify({"success": True, "path": chosen})
     except TclError as exc:
-        return jsonify({"success": False, "error": f"Tidak bisa membuka dialog folder (no display?): {exc}"}), 500
+        return jsonify({"success": False, "error": f"Could not open folder dialog (no display?): {exc}"}), 500
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 

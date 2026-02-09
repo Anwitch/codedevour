@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 
 <head>
   <link rel="icon" href="/static/favicon.ico">
@@ -164,9 +164,9 @@
   <div class="container mx-auto bg-white p-8 rounded-xl shadow-lg flex flex-col space-y-8">
     <div class="flex items-center space-x-4 bg-white shadow-lg rounded-xl p-6 border border-gray-200">
       <h1 class="text-xl font-bold text-gray-800">Path Project:</h1>
-      <input type="text" id="project-path-input" placeholder="Masukkan path folder di sini..."
+      <input type="text" id="project-path-input" placeholder="Enter folder path here..."
         class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
-      <button id="pick-folder-btn" class="btn-secondary font-bold py-2 px-4 rounded-md">Pilih Folder…</button>
+      <button id="pick-folder-btn" class="btn-secondary font-bold py-2 px-4 rounded-md">Choose Folder...</button>
       <button id="set-path-btn" class="btn-primary font-bold py-2 px-4 rounded-md">Set Path</button>
     </div>
 
@@ -174,38 +174,38 @@
       <!-- Panel Kiri -->
       <div id="names-panel" class="panel flex-1 basis-1/2 min-w-0">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">NamesExtractor</h2>
-        <p class="text-sm text-gray-600 mb-4">Pilih opsi di bawah untuk membuat daftar file dan folder di project Anda.
+        <p class="text-sm text-gray-600 mb-4">Choose the options below to create a list of files and folders in your project.
         </p>
-        <p class="text-xs text-gray-500 mb-3">Tips: tarik nama file/folder ke tab <strong>Exclude Me</strong> untuk
-          menambah pengecualian.</p>
+        <p class="text-xs text-gray-500 mb-3">Tip: drag the file/folder name to the <strong>Exclude Me</strong> tab to
+          add an exception.</p>
 
         <div class="mb-4 space-y-2">
           <label class="inline-flex items-center">
             <input type="checkbox" id="include-files-checkbox" class="form-checkbox text-blue-500 rounded" checked>
-            <span class="ml-2">Sertakan File</span>
+            <span class="ml-2">Include Files</span>
           </label>
           <label class="inline-flex items-center">
             <input type="checkbox" id="include-size-checkbox" class="form-checkbox text-blue-500 rounded">
-            <span class="ml-2">Sertakan Ukuran</span>
+            <span class="ml-2">Include Size</span>
           </label>
         </div>
 
         <button id="run-name-extractor-btn"
           class="w-full btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
-          Jalankan NamesExtractor.py
+          Run NamesExtractor.py
         </button>
 
         <div id="file-tree"
           class="mt-4 space-y-2 h-96 overflow-y-auto border border-gray-300 p-4 rounded-md bg-gray-50">
           <div class="text-center text-sm font-medium text-gray-500">
-            Input path dan jalankan NamesExtractor.py untuk melihat struktur.
+            Input the path and run NamesExtractor.py to see the structure.
           </div>
         </div>
       </div>
 
       <!-- Panel Kanan -->
       <div class="panel flex-1 basis-1/2 min-w-0">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Pengelolaan File</h2>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">File Management</h2>
         <div class="flex border-b border-gray-300 mb-4">
           <button
             class="tab-button active py-2 px-4 text-sm font-medium text-gray-700 hover:text-blue-500 focus:outline-none"
@@ -218,7 +218,7 @@
 
         <div id="text-extractor-tab" class="tab-content">
           <p class="text-sm text-gray-600 mb-4">
-            Klik tombol di bawah untuk menjalankan <code>TextEXtractor.py</code> dan melihat outputnya.
+            Click the button below to run <code>TextEXtractor.py</code> and see the output.
           </p>
 
           <!-- ✨ PROGRESS BAR SECTION ✨ -->
@@ -260,14 +260,14 @@
           <div class="grid grid-cols-1 gap-3 mb-4">
             <div class="flex items-center gap-3">
               <label class="w-40 text-sm text-gray-700 font-medium">Folder Output</label>
-              <input id="output-dir-input" type="text" placeholder="cth: C:/Users/Name/Output"
+              <input id="output-dir-input" type="text" placeholder="e.g., C:/Users/Name/Output"
                 class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
               <button id="pick-output-dir-btn" class="btn-secondary font-bold py-2 px-3 rounded-md whitespace-nowrap">
-                Pilih…
+                Choose...
               </button>
             </div>
             <div class="flex items-center gap-3">
-              <label class="w-40 text-sm text-gray-700 font-medium">Nama File</label>
+              <label class="w-40 text-sm text-gray-700 font-medium">File Name</label>
               <input id="output-name-input" type="text" placeholder="Output.txt"
                 class="flex-grow p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-0" />
             </div>
@@ -275,7 +275,7 @@
           <div class="flex items-center gap-3 mb-2">
             <input id="remove-blank-lines-checkbox" type="checkbox" class="form-checkbox text-blue-500 rounded">
             <label for="remove-blank-lines-checkbox" class="text-sm text-gray-700 font-medium">
-              Hapus baris kosong dari Output
+              Remove blank lines from Output
             </label>
           </div>
 
@@ -283,9 +283,9 @@
           <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-md border border-gray-200">
             <input id="use-async-extraction" type="checkbox" class="form-checkbox text-blue-500 rounded" checked>
             <label for="use-async-extraction" class="text-sm text-gray-700 font-medium">
-              🚀 Gunakan Async Extraction (dengan Progress Bar)
+              🚀 Use Async Extraction (with Progress Bar)
             </label>
-            <span class="ml-auto text-xs text-gray-500">💡 Uncheck jika ada masalah</span>
+            <span class="ml-auto text-xs text-gray-500">💡 Uncheck if there are any issues</span>
           </div>
 
           <!-- Auto Visualizer Toggle -->
@@ -300,7 +300,7 @@
           <div class="grid grid-cols-2 gap-3 mb-4">
             <button id="run-text-extractor-btn"
               class="btn-primary text-white font-bold py-2 px-4 rounded-md focus:ring-2 transition-colors">
-              Jalankan TextEXtractor.py
+              Run TextEXtractor.py
             </button>
 
             <button id="open-visualizer-btn"
@@ -312,7 +312,7 @@
           <!-- Open Output Folder Button -->
           <button id="open-output-folder-btn"
             class="w-full mt-3 btn-secondary text-gray-700 font-medium py-2 px-4 rounded-md border hover:bg-gray-50 transition-colors">
-            📂 Buka Folder Output Directory
+            📂 Open Output Folder Directory
           </button>
 
           <div class="mt-6">
@@ -321,36 +321,37 @@
             </h3>
 
             <pre id="output-display"
-              class="bg-gray-100 p-4 rounded-md text-sm text-gray-700 whitespace-pre-wrap h-96 overflow-y-auto border border-gray-300">Tekan tombol untuk memulai...</pre>
+              class="bg-gray-100 p-4 rounded-md text-sm text-gray-700 whitespace-pre-wrap h-96 overflow-y-auto border border-gray-300">Press a button to start...
+</pre>
           </div>
         </div>
 
         <div id="exclude-me-tab" class="tab-content hidden">
           <p class="text-sm text-gray-600 mb-4">
-            Edit nama file atau folder yang ingin Anda kecualikan. Setiap nama harus berada di baris baru.
+            Edit the file or folder names that you want to exclude. Each name must be on a new line.
           </p>
           <textarea id="exclude-list-textarea"
             class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
           <button id="save-exclude-btn"
-            class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Simpan</button>
+            class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">Save</button>
         </div>
         <div id="just-me-tab" class="tab-content hidden">
           <p class="text-sm text-gray-600 mb-2">
-            <strong>Just Me (Inclusion Filter):</strong> Hanya file/folder yang cocok dengan pattern di bawah yang akan
-            di-extract.
+            <strong>Just Me (Inclusion Filter):</strong> Only files/folders that match the pattern below will be
+            extracted.
           </p>
           <p class="text-xs text-gray-500 mb-4">
-            💡 <strong>Tips:</strong> Tambahkan nama file (e.g., <code>app.py</code>, <code>UserController.js</code>)
-            atau path folder (e.g., <code>src/</code>, <code>components/</code>).
-            Kosongkan untuk memproses semua file (subject to exclusions).
-            Supports nested files – all subdirectories akan di-scan untuk mencari file yang match.
+            💡 <strong>Tip:</strong> Add a file name (e.g., <code>app.py</code>, <code>UserController.js</code>)
+            or a folder path (e.g., <code>src/</code>, <code>components/</code>).
+            Leave it empty to process all files (subject to exclusions).
+            Supports nested files – all subdirectories will be scanned to find matching files.
           </p>
 
           <textarea id="just-me-textarea"
             class="w-full h-64 p-2 border rounded-md font-mono text-sm focus:outline-none border-gray-300"></textarea>
 
           <button id="save-just-me-btn" class="w-full mt-4 btn-primary text-white font-bold py-2 px-4 rounded-md">
-            Simpan
+            Save
           </button>
         </div>
       </div>
@@ -359,7 +360,7 @@
     <!-- Status & Activity -->
     <section id="status-panel" class="panel">
       <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-gray-800">Status & Penjelasan</h3>
+        <h3 class="font-semibold text-gray-800">Status & Explanation</h3>
         <span id="statusMessage" class="text-sm text-gray-500"></span>
       </div>
       <hr class="my-3">
@@ -767,7 +768,7 @@
         const tree = {};
         const validLines = lines.filter(line => line.includes(';'));
         if (validLines.length === 0) {
-          fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item yang ditemukan.</div>`;
+          fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">No items found.</div>`;
           return;
         }
         const firstLineParts = validLines[0].split(';');
@@ -835,7 +836,7 @@
 
       const buildFileTreeFromJson = (items, includeSize) => {
         if (!items.length) {
-          fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">Tidak ada item ditemukan.</div>`;
+          fileTreeElement.innerHTML = `<div class="text-center text-sm font-medium text-gray-500">No items found.</div>`;
           return;
         }
         const paths = items.map(it => it.path.replace(/\\/g, '/'));
@@ -935,8 +936,8 @@
             }
 
             if (j && j.need_output_path) {
-              statusMessage.textContent = 'Memerlukan folder output. Membuka dialog...';
-              appendLog(`Server meminta pemilihan folder output (${j.reason}).`, 'info');
+              statusMessage.textContent = 'Output folder required. Opening dialog...';
+              appendLog(`Server requests output folder selection (${j.reason}).`, 'info');
               try {
                 const resPick = await fetch('/pick_output_folder');
                 const pick = await resPick.json();
@@ -946,31 +947,31 @@
                   if (j.suggested_name && !outputNameInput.value.trim()) {
                     outputNameInput.value = j.suggested_name;
                   }
-                  appendLog(`Output folder terpilih: ${normalized}`, 'success');
-                  statusMessage.textContent = 'Folder output dipilih. Menjalankan ulang TextEXtractor...';
+                  appendLog(`Output folder selected: ${normalized}`, 'success');
+                  statusMessage.textContent = 'Output folder selected. Rerunning TextEXtractor...';
                   const rerunPayload = {
                     ...(payload.path ? { path: payload.path } : {}),
                     ...(outputDirInput.value ? { output_dir: outputDirInput.value } : {}),
                     ...(outputNameInput.value ? { output_name: outputNameInput.value.trim() } : {}),
                   };
-                  await handleButtonClick('/run_textextractor', button, 'Menjalankan ulang TextEXtractor...', rerunPayload);
+                  await handleButtonClick('/run_textextractor', button, 'Rerunning TextEXtractor...', rerunPayload);
                   return;
                 } else {
-                  const err = pick.error || 'Gagal memilih folder output.';
+                  const err = pick.error || 'Failed to select output folder.';
                   statusMessage.textContent = `❌ ${err}`;
-                  appendLog(`Gagal memilih folder output: ${err}`, 'error');
+                  appendLog(`Failed to select output folder: ${err}`, 'error');
                   return;
                 }
               } catch (e) {
-                statusMessage.textContent = `❌ Gagal membuka dialog: ${e.message}`;
-                appendLog(`Kesalahan saat membuka dialog output: ${e.message}`, 'error');
+                statusMessage.textContent = `❌ Failed to open dialog: ${e.message}`;
+                appendLog(`Error opening output dialog: ${e.message}`, 'error');
                 return;
               }
             }
 
             const errMsg = isTextExtractor ? data : (data && data.error);
             statusMessage.textContent = `❌ ${errMsg || response.statusText}`;
-            appendLog(`Terjadi kesalahan: ${errMsg || response.statusText}`, 'error');
+            appendLog(`An error occurred: ${errMsg || response.statusText}`, 'error');
             return;
           }
 
@@ -978,35 +979,35 @@
           if (endpoint === '/run_nameextractor_json') {
             const items = data.items || [];
             buildFileTreeFromJson(items, includeSizeCheckbox.checked);
-            statusMessage.textContent = `✅ Struktur diperbarui (${items.length} item).`;
-            appendLog('NamesExtractor JSON berhasil dijalankan.', 'success');
+            statusMessage.textContent = `✅ Structure updated (${items.length} items).`;
+            appendLog('NamesExtractor JSON ran successfully.', 'success');
 
           } else if (endpoint === '/run_nameextractor') {
             buildFileTree(data.output.split('\n').filter(line => line.trim() !== ''));
-            statusMessage.textContent = '✅ Struktur diperbarui.';
-            appendLog("NamesExtractor.py (legacy) berhasil dijalankan. Output ada di 'OutputAllNames.txt'.", 'success');
+            statusMessage.textContent = '✅ Structure updated.';
+            appendLog("NamesExtractor.py (legacy) ran successfully. Output is in 'OutputAllNames.txt'.", 'success');
 
           } else if (endpoint === '/run_textextractor') {
             outputDisplay.textContent = data;
-            statusMessage.textContent = '✅ TextEXtractor selesai.';
-            appendLog('TextEXtractor selesai. Output ditampilkan.', 'success');
+            statusMessage.textContent = '✅ TextEXtractor finished.';
+            appendLog('TextEXtractor finished. Output displayed.', 'success');
             await refreshOutputMetrics();
 
           } else if (endpoint === '/set_path') {
-            statusMessage.textContent = data.message || 'Path disimpan.';
-            appendLog('Path berhasil diatur dan disimpan ke config.json.', 'success');
+            statusMessage.textContent = data.message || 'Path saved.';
+            appendLog('Path set successfully and saved to config.json.', 'success');
 
           } else if (endpoint === '/manage_exclude_file') {
-            statusMessage.textContent = data.message || 'Daftar pengecualian disimpan.';
-            appendLog('Daftar pengecualian berhasil disimpan.', 'success');
+            statusMessage.textContent = data.message || 'Exclusion list saved.';
+            appendLog('Exclusion list saved successfully.', 'success');
 
           } else {
-            statusMessage.textContent = data.message || 'Selesai.';
-            appendLog(data.message || 'Selesai.', 'success');
+            statusMessage.textContent = data.message || 'Finished.';
+            appendLog(data.message || 'Finished.', 'success');
           }
         } catch (error) {
           statusMessage.textContent = `❌ ${error.message}`;
-          appendLog(`Terjadi kesalahan jaringan: ${error.message}`, 'error');
+          appendLog(`A network error occurred: ${error.message}`, 'error');
         } finally {
           button.disabled = false;
         }
@@ -1028,9 +1029,9 @@
         const raw = document.getElementById('project-path-input').value;
         const normalizedPath = cleanPath(raw);
         if (normalizedPath) {
-          handleButtonClick('/set_path', setPathBtn, 'Mengatur path...', { path: normalizedPath });
+          handleButtonClick('/set_path', setPathBtn, 'Setting path...', { path: normalizedPath });
         } else {
-          outputDisplay.textContent = '❌ Masukkan path yang valid.';
+          outputDisplay.textContent = '❌ Enter a valid path.';
         }
       });
 
@@ -1042,7 +1043,7 @@
           include_size: includeSizeCheckbox.checked,
           ...(normalizedPath ? { path: normalizedPath } : {})
         };
-        handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Menjalankan NamesExtractor.py... Mohon tunggu...', payload);
+        handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Running NamesExtractor.py... Please wait...', payload);
       });
 
       // TextExtractor (SUPPORTS BOTH: async with progress bar OR sync legacy mode)
@@ -1052,14 +1053,14 @@
 
         // Validate inputs
         if (!normalizedPath) {
-          statusMessage.textContent = '❌ Path project belum diatur!';
-          appendLog('Error: Path project kosong', 'error');
+          statusMessage.textContent = '❌ Project path not set!';
+          appendLog('Error: Project path is empty', 'error');
           return;
         }
 
         if (!outputDirInput.value || !outputNameInput.value) {
-          statusMessage.textContent = '❌ Output directory dan filename harus diisi!';
-          appendLog('Error: Output directory atau filename kosong', 'error');
+          statusMessage.textContent = '❌ Output directory and filename must be filled!';
+          appendLog('Error: Output directory or filename is empty', 'error');
           return;
         }
 
@@ -1161,11 +1162,11 @@
                 if (data.success) {
                   excludeListTextarea.value = data.content;
                 } else {
-                  excludeListTextarea.value = `Gagal memuat file: ${data.error}`;
+                  excludeListTextarea.value = `Failed to load file: ${data.error}`;
                 }
               })
               .catch(error => {
-                excludeListTextarea.value = `Gagal memuat: ${error.message}`;
+                excludeListTextarea.value = `Failed to load: ${error.message}`;
               });
           }
         });
@@ -1177,7 +1178,7 @@
         handleButtonClick(
           '/manage_just_me',
           saveJustMeBtn,
-          'Menyimpan Just Me.',
+          'Saving Just Me.',
           { content: newContent }
         );
       });
@@ -1185,14 +1186,14 @@
       // Save Exclude
       saveExcludeBtn.addEventListener('click', () => {
         const newContent = excludeListTextarea.value;
-        handleButtonClick('/manage_exclude_file', saveExcludeBtn, 'Menyimpan...', { content: newContent });
+        handleButtonClick('/manage_exclude_file', saveExcludeBtn, 'Saving...', { content: newContent });
       });
 
       // Pick folder project
       pickFolderBtn.addEventListener('click', async () => {
         pickFolderBtn.disabled = true;
-        statusMessage.textContent = 'Membuka dialog folder...';
-        appendLog('Membuka dialog pemilihan folder...', 'info');
+        statusMessage.textContent = 'Opening folder dialog...';
+        appendLog('Opening folder selection dialog...', 'info');
 
         try {
           const res = await fetch('/pick_folder'); // GET
@@ -1201,24 +1202,24 @@
           if (res.ok && data.success) {
             const normalized = (data.path || '').replace(/\\/g, '/');
             projectPathInput.value = normalized;
-            statusMessage.textContent = `✅ Path terpilih: ${normalized}`;
-            appendLog(`Path diperbarui dari dialog: ${normalized}`, 'success');
+            statusMessage.textContent = `✅ Path selected: ${normalized}`;
+            appendLog(`Path updated from dialog: ${normalized}`, 'success');
 
             const payload = {
               include_files: includeFilesCheckbox.checked,
               include_size: includeSizeCheckbox.checked,
               path: normalized
             };
-            appendLog('Menjalankan NamesExtractor JSON untuk path terpilih...', 'info');
-            await handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Memuat struktur…', payload);
+            appendLog('Running NamesExtractor JSON for the selected path...', 'info');
+            await handleButtonClick('/run_nameextractor_json', runNameExtractorBtn, 'Loading structure...', payload);
           } else {
-            const err = data.error || 'Gagal memilih folder.';
+            const err = data.error || 'Failed to select folder.';
             statusMessage.textContent = `❌ ${err}`;
-            appendLog(`Gagal memilih folder: ${err}`, 'error');
+            appendLog(`Failed to select folder: ${err}`, 'error');
           }
         } catch (e) {
-          statusMessage.textContent = `❌ Gagal: ${e.message}`;
-          appendLog(`Terjadi kesalahan jaringan: ${e.message}`, 'error');
+          statusMessage.textContent = `❌ Failed: ${e.message}`;
+          appendLog(`A network error occurred: ${e.message}`, 'error');
         } finally {
           pickFolderBtn.disabled = false;
         }
@@ -1227,8 +1228,8 @@
       // Pick output folder
       pickOutputDirBtn.addEventListener('click', async () => {
         pickOutputDirBtn.disabled = true;
-        statusMessage.textContent = 'Membuka dialog folder output...';
-        appendLog('Membuka dialog pemilihan folder output...', 'info');
+        statusMessage.textContent = 'Opening output folder dialog...';
+        appendLog('Opening output folder selection dialog...', 'info');
 
         try {
           const res = await fetch('/pick_output_folder'); // GET
@@ -1237,16 +1238,16 @@
           if (res.ok && data.success) {
             const normalized = (data.path || '').replace(/\\/g, '/');
             outputDirInput.value = normalized;
-            statusMessage.textContent = `✅ Output folder terpilih: ${normalized}`;
-            appendLog(`Output folder diperbarui dari dialog: ${normalized}`, 'success');
+            statusMessage.textContent = `✅ Output folder selected: ${normalized}`;
+            appendLog(`Output folder updated from dialog: ${normalized}`, 'success');
           } else {
-            const err = data.error || 'Gagal memilih folder output.';
+            const err = data.error || 'Failed to select output folder.';
             statusMessage.textContent = `❌ ${err}`;
-            appendLog(`Gagal memilih folder output: ${err}`, 'error');
+            appendLog(`Failed to select output folder: ${err}`, 'error');
           }
         } catch (e) {
-          statusMessage.textContent = `❌ Gagal: ${e.message}`;
-          appendLog(`Terjadi kesalahan jaringan: ${e.message}`, 'error');
+          statusMessage.textContent = `❌ Failed: ${e.message}`;
+          appendLog(`A network error occurred: ${e.message}`, 'error');
         } finally {
           pickOutputDirBtn.disabled = false;
         }
@@ -1255,24 +1256,24 @@
       // Open output folder
       openOutputFolderBtn.addEventListener('click', async () => {
         openOutputFolderBtn.disabled = true;
-        statusMessage.textContent = 'Membuka folder output...';
-        appendLog('Membuka folder data/output di file explorer...', 'info');
+        statusMessage.textContent = 'Opening output folder...';
+        appendLog('Opening data/output folder in file explorer...', 'info');
 
         try {
           const res = await fetch('/open_output_folder');
           const data = await res.json();
 
           if (res.ok && data.success) {
-            statusMessage.textContent = '✅ Folder output dibuka';
+            statusMessage.textContent = '✅ Output folder opened';
             appendLog(data.message, 'success');
           } else {
-            const err = data.error || 'Gagal membuka folder.';
+            const err = data.error || 'Failed to open folder.';
             statusMessage.textContent = `❌ ${err}`;
-            appendLog(`Gagal membuka folder: ${err}`, 'error');
+            appendLog(`Failed to open folder: ${err}`, 'error');
           }
         } catch (e) {
-          statusMessage.textContent = `❌ Gagal: ${e.message}`;
-          appendLog(`Terjadi kesalahan: ${e.message}`, 'error');
+          statusMessage.textContent = `❌ Failed: ${e.message}`;
+          appendLog(`An error occurred: ${e.message}`, 'error');
         } finally {
           openOutputFolderBtn.disabled = false;
         }

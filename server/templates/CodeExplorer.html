@@ -12,113 +12,107 @@
     <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/visualizer.css') }}">
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-    </style>
 </head>
 
 <body>
-    <div class="visualizer-container">
-        <!-- Header -->
-        <div class="visualizer-header">
-            <div>
-                <button id="backBtn"
-                    style="background: none; border: 1px solid #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem;"
-                    onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'"
-                    onclick="window.location.href='/'">
-                    ← Back to Main
-                </button>
-                <h1 class="visualizer-title">🔍 Code Explorer</h1>
-                <p style="margin: 0.5rem 0 0; color: #666; font-size: 0.9rem;">
-                    Interactive codebase dependency visualization
-                </p>
-            </div>
+    <div class="file-tree-container">
+        <h2>File Structure</h2>
+        <div id="file-tree" class="file-tree"></div>
+    </div>
 
-            <div class="visualizer-actions">
-                <div class="stats-badge" id="stats-badge" style="display: none;">
-                    <div class="stats-badge-item">
-                        <span class="stats-badge-label">Files:</span>
-                        <span class="stats-badge-value" id="file-count">0</span>
+    <div class="main-content">
+        <div class="visualizer-container">
+            <!-- Header -->
+            <div class="visualizer-header">
+                <div>
+                    <button id="backBtn"
+                        style="background: none; border: 1px solid #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem;"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'"
+                        onclick="window.location.href='/'">
+                        ← Dashboard
+                    </button>
+                    <h1 class="visualizer-title">Code Explorer</h1>
+                    <p style="margin: 0.5rem 0 0; color: #666; font-size: 0.9rem;">
+                        Visualize and explore project structure and dependencies
+                    </p>
+                </div>
+
+                <div class="visualizer-actions">
+                    <div class="stats-badge" id="stats-badge" style="display: none;">
+                        <div class="stats-badge-item">
+                            <span class="stats-badge-label">Files:</span>
+                            <span class="stats-badge-value" id="file-count">0</span>
+                        </div>
+                        <div class="stats-badge-item">
+                            <span class="stats-badge-label">Functions:</span>
+                            <span class="stats-badge-value" id="function-count">0</span>
+                        </div>
                     </div>
-                    <div class="stats-badge-item">
-                        <span class="stats-badge-label">Functions:</span>
-                        <span class="stats-badge-value" id="function-count">0</span>
+
+                    <button class="visualizer-btn visualizer-btn-primary" id="scan-btn">
+                        Analyze Project
+                    </button>
+
+                    <button class="visualizer-btn visualizer-btn-secondary" id="refresh-btn" style="display: none;">
+                        Update Analysis
+                    </button>
+
+                    <button class="visualizer-btn visualizer-btn-secondary" id="clear-cache-btn" style="display: none;">
+                        Clear Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="filter-panel-container">
+                <div id="filter-panel"></div>
+            </div>
+
+            <!-- Graph Container -->
+            <div class="graph-container">
+                <!-- Loading Overlay -->
+                <div class="loading-overlay" id="loading-overlay" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text" id="loading-text">Analyzing project...</div>
+                </div>
+
+                <!-- Graph Controls -->
+                <div class="graph-controls">
+                    <button class="graph-control-btn" id="reset-view-btn" title="Reset View">
+                        ↻
+                    </button>
+                    <button class="graph-control-btn" id="export-svg-btn" title="Export Graph">
+                        💾
+                    </button>
+                    <button class="graph-control-btn" id="fullscreen-btn" title="Fullscreen">
+                        ⛶
+                    </button>
+                </div>
+
+                <!-- Legend -->
+                <div class="graph-legend">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #DC143C;">Color Guide</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #3572A5;"></div>
+                        <span>Python Files</span>
+                    </div>
+                    <div class="legend-item">
+                        <span style="font-size: 0.8rem; color: #666;">
+                            • Bubble size indicates importance<br>
+                            • Click to view details<br>
+                            • Drag bubbles to reposition
+                        </span>
                     </div>
                 </div>
 
-                <button class="visualizer-btn visualizer-btn-primary" id="scan-btn">
-                    📊 Scan Project
-                </button>
-
-                <button class="visualizer-btn visualizer-btn-secondary" id="refresh-btn" style="display: none;">
-                    🔄 Refresh
-                </button>
-
-                <button class="visualizer-btn visualizer-btn-secondary" id="clear-cache-btn" style="display: none;">
-                    🗑️ Clear Cache
-                </button>
-            </div>
-        </div>
-
-        <!-- Filter Panel -->
-        <div class="filter-panel-container">
-            <div id="filter-panel"></div>
-        </div>
-
-        <!-- Graph Container -->
-        <div class="graph-container">
-            <!-- Loading Overlay -->
-            <div class="loading-overlay" id="loading-overlay" style="display: none;">
-                <div class="loading-spinner"></div>
-                <div class="loading-text" id="loading-text">Scanning project...</div>
+                <!-- Bubble Graph -->
+                <div id="bubble-graph"></div>
             </div>
 
-            <!-- Graph Controls -->
-            <div class="graph-controls">
-                <button class="graph-control-btn" id="reset-view-btn" title="Reset View">
-                    ↻
-                </button>
-                <button class="graph-control-btn" id="export-svg-btn" title="Export SVG">
-                    💾
-                </button>
-                <button class="graph-control-btn" id="fullscreen-btn" title="Fullscreen">
-                    ⛶
-                </button>
+            <!-- Details Sidebar -->
+            <div class="details-sidebar-container">
+                <div id="details-sidebar"></div>
             </div>
-
-            <!-- Legend -->
-            <div class="graph-legend">
-                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #DC143C;">Legend</div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #3572A5;"></div>
-                    <span>Python Files</span>
-                </div>
-                <div class="legend-item">
-                    <span style="font-size: 0.8rem; color: #666;">
-                        • Size = Importance<br>
-                        • Click = View Details<br>
-                        • Drag = Reposition
-                    </span>
-                </div>
-            </div>
-
-            <!-- Bubble Graph -->
-            <div id="bubble-graph"></div>
-        </div>
-
-        <!-- Details Sidebar -->
-        <div class="details-sidebar-container">
-            <div id="details-sidebar"></div>
         </div>
     </div>
 
@@ -126,19 +120,21 @@
     <script src="{{ url_for('static', filename='js/visualizer/BubbleGraph.js') }}"></script>
     <script src="{{ url_for('static', filename='js/visualizer/DetailsSidebar.js') }}"></script>
     <script src="{{ url_for('static', filename='js/visualizer/FilterPanel.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/visualizer/FileTree.js') }}"></script>
 
     <script>
         // Initialize components
         let bubbleGraph;
         let detailsSidebar;
         let filterPanel;
+        let fileTree;
         let currentProjectPath = '';
 
         document.addEventListener('DOMContentLoaded', async () => {
             initializeComponents();
             attachEventListeners();
             await loadProjectPath();
-            
+
             // Auto-scan if project path is available
             setTimeout(autoScanIfPossible, 500);
         });
@@ -152,6 +148,13 @@
 
             // Initialize FilterPanel
             filterPanel = new FilterPanel('filter-panel');
+
+            // Initialize FileTree
+            fileTree = new FileTree('file-tree');
+
+            // Set up file tree callback BEFORE loading
+            fileTree.onFileClick = handleFileTreeClick;
+            fileTree.load();
 
             // Set up callbacks
             bubbleGraph.onNodeClick = handleNodeClick;
@@ -195,17 +198,9 @@
                 const response = await fetch('/config_summary');
                 const data = await response.json();
                 currentProjectPath = data.target_folder || '';
-                
-                // Debug logging
-                console.log('Config loaded:', {
-                    success: data.success,
-                    target_folder: data.target_folder,
-                    exclude_file: data.exclude_file,
-                    just_me_file: data.just_me_file
-                });
-                
+
                 if (!currentProjectPath) {
-                    console.warn('No project path found in config');
+                    console.warn('No project path found in configuration');
                 }
             } catch (error) {
                 console.error('Failed to load project path:', error);
@@ -213,7 +208,7 @@
         }
 
         async function scanProject(forceRefresh = false) {
-            showLoading('Scanning project with filters...');
+            showLoading('Analyzing project files and dependencies...');
 
             try {
                 // Step 1: Scan project
@@ -233,19 +228,14 @@
                 const scanData = await scanResponse.json();
 
                 if (scanData.status !== 'success') {
-                    throw new Error(scanData.message || 'Scan failed');
+                    throw new Error(scanData.message || 'Analysis failed');
                 }
 
                 // Update stats with filtering info
                 updateStats(scanData);
 
-                // Show filtering information if available
-                if (scanData.filters_applied) {
-                    console.log('Filters applied:', scanData.filters_applied);
-                }
-
                 // Step 2: Get graph data
-                showLoading('Building graph...');
+                showLoading('Building visualization...');
 
                 const graphResponse = await fetch('/api/visualizer/graph');
                 const graphData = await graphResponse.json();
@@ -253,22 +243,27 @@
                 // Render graph
                 bubbleGraph.render(graphData);
 
+                // Update file tree with available nodes
+                if (fileTree && graphData.nodes) {
+                    fileTree.setAvailableNodes(graphData.nodes);
+                }
+
                 // Show success
                 hideLoading();
                 document.getElementById('refresh-btn').style.display = 'inline-block';
                 document.getElementById('clear-cache-btn').style.display = 'inline-block';
 
             } catch (error) {
-                console.error('Scan failed:', error);
-                alert('Failed to scan project: ' + error.message);
+                console.error('Analysis failed:', error);
+                alert('Failed to analyze project: ' + error.message);
                 hideLoading();
             }
         }
 
         async function clearCache() {
             try {
-                showLoading('Clearing cache...');
-                
+                showLoading('Clearing cached data...');
+
                 const response = await fetch('/api/visualizer/cache/clear', {
                     method: 'POST',
                     headers: {
@@ -280,17 +275,17 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
                     alert('Cache cleared successfully!');
                     hideLoading();
-                    
+
                     // Trigger a fresh scan
                     scanProject(true);
                 } else {
                     throw new Error(result.message || 'Failed to clear cache');
                 }
-                
+
             } catch (error) {
                 console.error('Clear cache failed:', error);
                 alert('Failed to clear cache: ' + error.message);
@@ -301,18 +296,17 @@
         // Auto-scan when page loads if project path is available
         async function autoScanIfPossible() {
             if (currentProjectPath && currentProjectPath.trim()) {
-                console.log('Auto-scanning project:', currentProjectPath);
                 await scanProject(true); // Force refresh to get latest data
             } else {
-                console.log('No project path available, waiting for user input');
-                showLoading('No project path set. Please configure in the main app.');
+                showLoading('No project path configured. Please set the target folder in the main application.');
             }
         }
 
         async function handleNodeClick(node) {
-            console.log('Node clicked:', node);
-
             try {
+                // Highlight the file in the tree
+                fileTree.highlightFile(node.id);
+
                 // Fetch file details
                 const response = await fetch(`/api/visualizer/file/${encodeURIComponent(node.id)}`);
                 const fileData = await response.json();
@@ -327,22 +321,21 @@
 
         function handleNodeHover(node) {
             // Optional: Show tooltip
-            console.log('Node hover:', node.id);
+            console.log('Node hovered:', node.id);
         }
 
         function handleFunctionClick(func) {
-            console.log('Function clicked:', func);
-            // Optional: Show function details modal
+            console.log('Function selected:', func);
         }
 
         function handleImportClick(filepath) {
-            console.log('Import clicked:', filepath);
+            console.log('Import referenced:', filepath);
             // Focus on the imported file
             bubbleGraph.focusNode(filepath);
         }
 
         function handleFilterChange(filters) {
-            console.log('Filters changed:', filters);
+            console.log('Filter updated:', filters);
 
             // Apply filters to graph
             const criteria = {};
@@ -362,8 +355,26 @@
             bubbleGraph.filterNodes(criteria);
         }
 
+        async function handleFileTreeClick(filepath) {
+            await fileTree.ready();
+
+            // Check if graph has been rendered
+            if (!bubbleGraph) {
+                alert('Visualization not ready. Please refresh the page.');
+                return;
+            }
+
+            if (!bubbleGraph.nodes || bubbleGraph.nodes.length === 0) {
+                alert('Please analyze the project first by clicking "Analyze Project"');
+                return;
+            }
+
+            // Focus and click on the bubble
+            bubbleGraph.focusAndClickNode(filepath);
+        }
+
         function handleSearchChange(query) {
-            console.log('Search:', query);
+            console.log('Search query:', query);
             bubbleGraph.searchNodes(query);
         }
 

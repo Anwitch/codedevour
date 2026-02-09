@@ -115,21 +115,32 @@ class CodeParser:
             # Use regex for .tsx/.jsx files, esprima for .js/.ts
             _, ext = os.path.splitext(filepath)
             
+            functions = []
+            classes = []
+            imports = []
+            
             if ext in ['.tsx', '.jsx']:
                 # Regex fallback for JSX/TSX files
                 functions = self._regex_extract_js_functions(source)
                 classes = self._regex_extract_js_classes(source)
                 imports = self._regex_extract_js_imports(source)
             else:
-                # Use esprima for .js and .ts files
+                # Try to use esprima for .js and .ts files
                 try:
-                    tree = esprima.parseModule(source, {'loc': True})
-                except:
-                    tree = esprima.parseScript(source, {'loc': True}) # Fallback
-                
-                functions = self._esprima_extract_functions(tree)
-                classes = self._esprima_extract_classes(tree)
-                imports = self._esprima_extract_imports(tree)
+                    try:
+                        tree = esprima.parseModule(source, {'loc': True})
+                    except:
+                        tree = esprima.parseScript(source, {'loc': True}) # Fallback
+                    
+                    functions = self._esprima_extract_functions(tree)
+                    classes = self._esprima_extract_classes(tree)
+                    imports = self._esprima_extract_imports(tree)
+                except Exception as parse_error:
+                    # Fallback to regex if esprima fails (modern syntax not supported)
+                    print(f"Esprima failed for {filepath}, falling back to regex: {parse_error}")
+                    functions = self._regex_extract_js_functions(source)
+                    classes = self._regex_extract_js_classes(source)
+                    imports = self._regex_extract_js_imports(source)
             
             return {
                 'filepath': filepath,

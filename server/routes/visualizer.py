@@ -15,6 +15,7 @@ import json
 from flask import Blueprint, request, jsonify, render_template, current_app
 from server.config import load_config, get_config
 from server.visualizer import CodeParser, DependencyAnalyzer, CacheManager
+from server.extractors.TextEXtractor import combine_files_in_folder_recursive
 
 visualizer_bp = Blueprint('visualizer', __name__)
 
@@ -470,11 +471,32 @@ def clear_cache():
         }), 500
 
 
+def update_extracted_files():
+    """
+    Update OutputExtractedFiles.txt by running the text extractor
+    """
+    try:
+        config = get_config()
+        target_folder = config.get('TARGET_FOLDER')
+        if not target_folder:
+            print("Warning: TARGET_FOLDER not set, cannot update extracted files.")
+            return
+
+        # The output file is determined by the extractor script, so we just run it
+        combine_files_in_folder_recursive(
+            folder_path=target_folder,
+            exclude_file=config.get("EXCLUDE_FILE_PATH"),
+            # Output file name is handled inside the function
+        )
+    except Exception as e:
+        print(f"Error updating extracted files: {e}")
+
 @visualizer_bp.route('/visualizer')
 def visualizer_page():
     """
     Render Code Explorer page
     """
+    update_extracted_files()
     return render_template('CodeExplorer.html')
 
 
@@ -590,4 +612,87 @@ def _detect_technology(filepath: str, root: str) -> str:
     }
     return language_map.get(file_ext, 'unknown')
 
+
+@visualizer_bp.route('/api/visualizer/file-structure', methods=['GET'])
+def get_file_structure():
+    """
+    Get project file structure from OutputExtractedFiles.txt
+    """
+    try:
+        # Get config to find the data path
+        # Construct path relative to the project root
+        project_root = current_app.root_path.replace('\\server', '')
+        output_file = os.path.join(project_root, 'data', 'output', 'OutputExtractedFiles.txt')
+        
+        print(f"DEBUG: Attempting to load file structure from: {output_file}")
+
+        if not os.path.exists(output_file):
+            print(f"ERROR: File not found at: {output_file}")
+            return jsonify({'status': 'error', 'message': f'OutputExtractedFiles.txt not found at {output_file}'}), 404
+
+        # Read and parse the file
+        with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        # Build hierarchical structure
+        root = {'name': 'Project', 'type': 'folder', 'children': []}
+        base_path_parts = []
+
+        # Determine the base path from the first folder entry
+        for line in lines:
+            if '[FOLDER]' in line:
+                base_path_str = line.split(';')[0].strip().replace('\\', '/')
+                base_path_parts = base_path_str.split('/')
+                root['name'] = base_path_parts[-1] # Set root name to project folder
+                base_path_parts = base_path_parts[:-1] # Get the parent path
+                break
+        
+        base_path_prefix = '/'.join(base_path_parts) + '/' if base_path_parts else ''
+
+        for line in lines:
+            parts = line.strip().split('; ')
+            if len(parts) < 2 or ('[FOLDER]' in parts[1] and len(parts[0].split('/')) <= len(base_path_parts) +1) :
+                continue
+
+            path_str = parts[0].strip().replace('\\', '/')
+            
+            # Trim the base path from the start
+            if path_str.startswith(base_path_prefix):
+                path_str = path_str[len(base_path_prefix):]
+
+            # Find or create nodes in the tree
+            current_level = root['children']
+            path_components = path_str.split('/')
+            
+            # Skip the root folder itself which is now the `root` object
+            path_components.pop(0)
+
+            for i, component in enumerate(path_components):
+                if not component:
+                    continue
+                
+                # Reconstruct the relative path for the 'path' property
+                relative_path_so_far = '/'.join(path_components[:i+1])
+
+                is_last_component = (i == len(path_components) - 1)
+                node_type = 'file' if is_last_component and '[FILE]' in parts[1] else 'folder'
+
+                # Find existing node
+                node = next((child for child in current_level if child['name'] == component), None)
+
+                if not node:
+                    node = {
+                        'name': component,
+                        'type': node_type,
+                        'path': path_str,
+                        'children': []
+                    }
+                    current_level.append(node)
+                
+                current_level = node['children']
+
+        return jsonify(root)
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
